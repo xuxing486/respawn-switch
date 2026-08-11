@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\RespawnSwitch.Application\RespawnSwitch.Application.csproj" />
     <ProjectReference Include="..\..\src\RespawnSwitch.Windows\RespawnSwitch.Windows.csproj" />
     <ProjectReference Include="..\..\src\RespawnSwitch.App\RespawnSwitch.App.csproj" />
+    <ProjectReference Include="..\..\tools\RespawnSwitch.TestWindowHost\RespawnSwitch.TestWindowHost.csproj" />
   </ItemGroup>
 
 </Project>

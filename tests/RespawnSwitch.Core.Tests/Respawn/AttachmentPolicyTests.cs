@@ -36,4 +36,19 @@ public sealed class AttachmentPolicyTests
                 attachmentIssued: false,
                 thresholdSeconds: 2.0));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Evaluate_AlreadyIssuedTakesPrecedenceOverInvalidTimer(double? verifiedSeconds)
+    {
+        Assert.Equal(
+            AttachmentDecision.AlreadyIssued,
+            AttachmentPolicy.Evaluate(
+                verifiedSeconds,
+                attachmentIssued: true,
+                thresholdSeconds: 2.0));
+    }
 }

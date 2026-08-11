@@ -4,9 +4,8 @@ namespace RespawnSwitch.Core.Tests.Clock;
 
 public sealed class RespawnTimerNormalizerTests
 {
-    [Theory]
-    [MemberData(nameof(InvalidValues))]
-    public void TryNormalize_InvalidOrUnverifiedValue_ReturnsFalse(double? raw)
+    [Fact]
+    public void TryNormalize_UnverifiedSemantics_ReturnsFalse()
     {
         var normalizer = new RespawnTimerNormalizer();
         var semantics = new RespawnTimerSemantics(
@@ -14,6 +13,20 @@ public sealed class RespawnTimerNormalizerTests
             PatchLabel: "16.15",
             SecondsPerRawUnit: 1.0,
             EvidenceReportId: "none");
+
+        Assert.False(normalizer.TryNormalize(10.0, semantics, out _));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidRawValues))]
+    public void TryNormalize_VerifiedSemanticsWithInvalidRaw_ReturnsFalse(double? raw)
+    {
+        var normalizer = new RespawnTimerNormalizer();
+        var semantics = new RespawnTimerSemantics(
+            TimerSemanticStatus.VerifiedForCurrentPatch,
+            PatchLabel: "16.15",
+            SecondsPerRawUnit: 1.0,
+            EvidenceReportId: "probe-16.15-01");
 
         Assert.False(normalizer.TryNormalize(raw, semantics, out _));
     }
@@ -64,13 +77,12 @@ public sealed class RespawnTimerNormalizerTests
         Assert.False(normalizer.TryNormalize(2.0, semantics, out _));
     }
 
-    public static TheoryData<double?> InvalidValues => new()
+    public static TheoryData<double?> InvalidRawValues => new()
     {
         null,
         double.NaN,
         double.PositiveInfinity,
         double.NegativeInfinity,
-        -0.01,
-        10.0
+        -0.01
     };
 }

@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RespawnSwitch.Core\RespawnSwitch.Core.csproj" />
+    <ProjectReference Include="..\..\src\RespawnSwitch.Application\RespawnSwitch.Application.csproj" />
+    <ProjectReference Include="..\..\src\RespawnSwitch.Riot\RespawnSwitch.Riot.csproj" />
+    <ProjectReference Include="..\..\src\RespawnSwitch.Infrastructure\RespawnSwitch.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

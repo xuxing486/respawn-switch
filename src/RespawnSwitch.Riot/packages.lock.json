@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "respawnswitch.application": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Core": "[1.0.0, )"
+        }
+      },
+      "respawnswitch.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

@@ -1,10 +1,8 @@
 .vs/
-.worktrees/
 **/bin/
 **/obj/
 *.user
 TestResults/
 artifacts/
-outputs/
 work/
-.superpowers/
+outputs/

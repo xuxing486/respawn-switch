@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0-windows10.0.26100": {
+      "respawnswitch.application": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Core": "[1.0.0, )"
+        }
+      },
+      "respawnswitch.core": {
+        "type": "Project"
+      },
+      "respawnswitch.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Application": "[1.0.0, )",
+          "RespawnSwitch.Core": "[1.0.0, )"
+        }
+      },
+      "respawnswitch.riot": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Application": "[1.0.0, )",
+          "RespawnSwitch.Core": "[1.0.0, )"
+        }
+      },
+      "respawnswitch.windows": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Application": "[1.0.0, )",
+          "RespawnSwitch.Core": "[1.0.0, )"
+        }
+      }
+    },
+    "net8.0-windows10.0.26100/win-x64": {}
+  }
+}

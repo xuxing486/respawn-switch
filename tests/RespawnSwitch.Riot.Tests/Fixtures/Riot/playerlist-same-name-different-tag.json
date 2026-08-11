@@ -1,0 +1,4 @@
+[
+  { "riotId": "Player#NA1", "championName": "Ashe", "isDead": false, "respawnTimer": 0, "scores": { "deaths": 0 } },
+  { "riotId": "Player#EUW", "championName": "Annie", "isDead": true, "respawnTimer": 7, "scores": { "deaths": 2 } }
+]

@@ -1,0 +1,7 @@
+{
+  "allPlayers": [
+    { "riotId": "Other#NA1", "championName": "Annie", "isDead": false, "respawnTimer": 0, "scores": { "deaths": 0 } },
+    { "riotId": "Player#NA1", "championName": "Ashe", "isDead": true, "respawnTimer": 18.75, "scores": { "deaths": 1 } }
+  ],
+  "gameData": { "gameTime": 321.25, "gameMode": "ARAM" }
+}

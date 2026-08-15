@@ -1049,6 +1049,9 @@
           "RespawnSwitch.Core": "[1.0.0, )"
         }
       },
+      "respawnswitch.testwindowhost": {
+        "type": "Project"
+      },
       "respawnswitch.windows": {
         "type": "Project",
         "dependencies": {

@@ -9,6 +9,10 @@ internal static class ActivePlayerParser
 
     private static ActivePlayerSnapshot? ParseElement(JsonElement root, List<RiotJsonError> errors)
     {
+        if (root.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(root.GetString()))
+        {
+            return new ActivePlayerSnapshot(root.GetString()!);
+        }
         if (root.ValueKind != JsonValueKind.Object)
         {
             errors.Add(new RiotJsonError("riot.schema.activeplayer.root-invalid-type", "$", "Expected a JSON object."));

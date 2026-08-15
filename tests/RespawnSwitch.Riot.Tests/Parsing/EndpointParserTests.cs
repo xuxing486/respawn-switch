@@ -14,6 +14,15 @@ public sealed class EndpointParserTests
     }
 
     [Fact]
+    public void ActivePlayerName_ParsesTheDocumentedJsonStringShape()
+    {
+        var result = ActivePlayerParser.Parse("\"Player#NA1\"");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Player#NA1", result.Value!.RiotId);
+    }
+
+    [Fact]
     public void ActivePlayer_RejectsWrongCaseAndNonStringRiotId()
     {
         var wrongCase = ActivePlayerParser.Parse("{\"riotid\":\"Player#NA1\"}");

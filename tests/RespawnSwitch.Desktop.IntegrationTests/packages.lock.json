@@ -1016,7 +1016,7 @@
           "xunit.extensibility.core": "[2.5.3]"
         }
       },
-      "respawnswitch.app": {
+      "RespawnSwitch": {
         "type": "Project",
         "dependencies": {
           "RespawnSwitch.Application": "[1.0.0, )",

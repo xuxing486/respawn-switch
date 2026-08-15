@@ -1,5 +1,6 @@
 using RespawnSwitch.Application.Windows;
 using RespawnSwitch.Windows.Identity;
+using RespawnSwitch.Windows.Interop;
 
 namespace RespawnSwitch.Windows.Windows;
 
@@ -24,7 +25,12 @@ public sealed class LeagueWindowLocator(IWindowSnapshotSource windows, IToolhelp
         return ValueTask.FromResult<GameWindowTarget?>(candidates.Length == 1 ? candidates[0] : null);
     }
 
-    public ValueTask<bool> TryRestoreFocusOnceAsync(GameWindowTarget target, CancellationToken cancellationToken) => ValueTask.FromResult(false);
+    public ValueTask<bool> TryRestoreFocusOnceAsync(GameWindowTarget target, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var handle = target.Identity.Handle.Value;
+        return ValueTask.FromResult(!target.Identity.Handle.IsNull && User32.ShowWindowAsync(handle, User32.SwShownoactivate) && User32.SetForegroundWindow(handle));
+    }
     public ValueTask FlashTaskbarAsync(GameWindowTarget target, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
     private static bool IsEligible(NativeWindowSnapshot window) =>

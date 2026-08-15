@@ -9,6 +9,14 @@ internal static class User32
     internal const int GwlExStyle = -20;
     internal const nint WsExToolWindow = 0x00000080;
     internal const nint WsExTopmost = 0x00000008;
+    internal const nint WsExNoActivate = 0x08000000;
+    internal const nint WsExTransparent = 0x00000020;
+    internal const nint HwndTopmost = -1;
+    internal const nint HwndNoTopmost = -2;
+    internal const uint SwpNoActivate = 0x0010;
+    internal const uint SwpShowWindow = 0x0040;
+    internal const int SwShownoactivate = 4;
+    internal const int SwHide = 0;
     internal const uint MonitorDefaultToNearest = 2;
 
     internal delegate bool EnumWindowsProc(nint hWnd, nint lParam);
@@ -48,6 +56,9 @@ internal static class User32
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
     internal static extern nint GetWindowLongPtr(nint hWnd, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    internal static extern nint SetWindowLongPtr(nint hWnd, int index, nint value);
 
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern nint MonitorFromWindow(nint hWnd, uint flags);

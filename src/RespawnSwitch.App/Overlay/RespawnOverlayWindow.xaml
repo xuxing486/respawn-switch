@@ -1,0 +1,9 @@
+<Window x:Class="RespawnSwitch.App.Overlay.RespawnOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        AllowsTransparency="True" Background="Transparent" WindowStyle="None" ResizeMode="NoResize"
+        ShowInTaskbar="False" Topmost="True" ShowActivated="False" SizeToContent="WidthAndHeight">
+    <Border Background="#CC111111" CornerRadius="16" Padding="22,10">
+        <TextBlock x:Name="CountdownText" Foreground="White" FontSize="28" FontWeight="SemiBold" />
+    </Border>
+</Window>

@@ -1,16 +1,7 @@
 # RespawnSwitch
 
-RespawnSwitch is a local-only Windows x64 prototype that reads the Riot Live Client Data API for the current player, shows a no-activate respawn overlay, and controls only the calibrated Douyin desktop client. It does not open the League process, read memory, inject code, install hooks, or send game input.
+Windows x64 本地 MVP。解压发布包后双击 `RespawnSwitch.exe` 启动，不需要管理员权限。
 
-The current implementation is gated by `docs/superpowers/plans/2026-08-10-respawnswitch-core-and-risk-probes.md`. Do not enable Windows or media automation until Gate A has passed for the current League patch.
+使用前请将 League 设置为无边框或窗口化模式。抖音桌面客户端默认路径为 `D:\douyin\douyin.exe`；如实际安装位置不同，请在应用中调整。点击“开始监控”后再进入游戏。
 
-## Developer commands
-
-```powershell
-$env:DOTNET_CLI_HOME = Join-Path $PWD 'work\dotnet-home'
-$env:NUGET_PACKAGES = Join-Path $PWD 'work\nuget-packages'
-$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
-dotnet restore RespawnSwitch.sln
-dotnet build RespawnSwitch.sln -c Debug --no-restore
-dotnet test RespawnSwitch.sln -c Debug --no-build
-```
+真实游戏环境和当前客户端版本仍需在本机验证；本文不代表已完成实测。

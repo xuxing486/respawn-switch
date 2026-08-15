@@ -1,23 +1,19 @@
 ﻿using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using RespawnSwitch.App.Overlay;
+using RespawnSwitch.Windows.Media;
 
 namespace RespawnSwitch.App;
 
-/// <summary>
-/// Interaction logic for MainWindow.xaml
-/// </summary>
 public partial class MainWindow : Window
 {
-    public MainWindow()
-    {
-        InitializeComponent();
-    }
+    private readonly RespawnOverlayWindow overlay = new(); private RespawnCoordinator? coordinator; private AppSettings settings = AppSettings.Default;
+    public MainWindow() { InitializeComponent(); Loaded += async (_, _) => { settings = await AppSettingsStore.LoadAsync(); DouyinPathText.Text = settings.DouyinPath; await CalibrateAsync(); Start(); }; Closed += async (_, _) => { if (coordinator is not null) await coordinator.DisposeAsync(); overlay.Hide(); }; }
+    private async Task CalibrateAsync() { try { var matches = await DouyinGsmTcDiscovery.DiscoverAsync(CancellationToken.None); IdentityText.Text = matches.Count == 1 ? $"已发现媒体身份：{matches[0].SourceAppUserModelId}" : "未发现唯一抖音媒体身份"; } catch { IdentityText.Text = "媒体身份发现不可用"; } }
+    private void Start() { coordinator ??= new RespawnCoordinator(overlay, settings with { DouyinPath = DouyinPathText.Text.Trim() }, SetStatus); coordinator.Start(); }
+    private async void Start_Click(object sender, RoutedEventArgs e) { settings = settings with { DouyinPath = DouyinPathText.Text.Trim() }; await AppSettingsStore.SaveAsync(settings); Start(); }
+    private async void Stop_Click(object sender, RoutedEventArgs e) { if (coordinator is not null) { await coordinator.DisposeAsync(); coordinator = null; } SetStatus("已停止监控"); }
+    private void TestOverlay_Click(object sender, RoutedEventArgs e) => overlay.Show();
+    private void SetStatus(string text) => Dispatcher.Invoke(() => { StatusText.Text = text; LogText.Text = $"{DateTime.Now:HH:mm:ss} {text}{Environment.NewLine}{LogText.Text}"; StatusLight.Fill = text.Contains("安全跳过") ? System.Windows.Media.Brushes.Orange : System.Windows.Media.Brushes.ForestGreen; });
 }

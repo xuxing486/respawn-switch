@@ -3,10 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:RespawnSwitch.App"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
+        Title="复活切换" Height="430" Width="620" ResizeMode="CanMinimize">
+    <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal"><Ellipse x:Name="StatusLight" Width="14" Height="14" Fill="#2D9D50" Margin="0,4,10,0"/><TextBlock x:Name="StatusText" FontSize="18" Text="准备中"/></StackPanel>
+        <StackPanel Grid.Row="1" Margin="0,22,0,0"><TextBlock Text="抖音路径"/><TextBox x:Name="DouyinPathText" Margin="0,6,0,0"/></StackPanel>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,18,0,0"><Button Content="开始监控" Click="Start_Click" Padding="16,7"/><Button Content="停止" Click="Stop_Click" Margin="10,0,0,0" Padding="16,7"/><Button Content="测试悬浮窗" Click="TestOverlay_Click" Margin="10,0,0,0" Padding="16,7"/><TextBlock x:Name="IdentityText" Margin="18,7,0,0" TextWrapping="Wrap"/></StackPanel>
+        <TextBox Grid.Row="3" x:Name="LogText" Margin="0,18,0,0" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
     </Grid>
 </Window>

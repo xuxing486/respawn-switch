@@ -1025,6 +1025,13 @@
       "respawnswitch.core": {
         "type": "Project"
       },
+      "respawnswitch.mediasmoke": {
+        "type": "Project",
+        "dependencies": {
+          "RespawnSwitch.Application": "[1.0.0, )",
+          "RespawnSwitch.Windows": "[1.0.0, )"
+        }
+      },
       "respawnswitch.windows": {
         "type": "Project",
         "dependencies": {

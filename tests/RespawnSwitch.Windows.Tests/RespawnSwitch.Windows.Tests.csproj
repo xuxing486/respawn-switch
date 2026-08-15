@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\RespawnSwitch.Core\RespawnSwitch.Core.csproj" />
     <ProjectReference Include="..\..\src\RespawnSwitch.Application\RespawnSwitch.Application.csproj" />
     <ProjectReference Include="..\..\src\RespawnSwitch.Windows\RespawnSwitch.Windows.csproj" />
+    <ProjectReference Include="..\..\tools\RespawnSwitch.MediaSmoke\RespawnSwitch.MediaSmoke.csproj" />
   </ItemGroup>
 
 </Project>

@@ -47,6 +47,14 @@ public static class DouyinLaunchPlanResolver
     }
 }
 
+public static class RespawnDouyinActionPlanner
+{
+    public static DouyinLaunchPlan Plan(
+        DouyinDiscoveryResult discovery,
+        DouyinRuntimePreferences preferences) =>
+        DouyinLaunchPlanResolver.Resolve(discovery, preferences);
+}
+
 public sealed class WebFallbackCycleGuard
 {
     private readonly object syncRoot = new();

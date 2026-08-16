@@ -12,8 +12,8 @@ public partial class MainWindow : Window
     private readonly RespawnOverlayWindow overlay = new(); private RespawnCoordinator? coordinator; private AppSettings settings = AppSettings.Default;
     public MainWindow() { InitializeComponent(); Loaded += async (_, _) => { settings = await AppSettingsStore.LoadAsync(); DouyinPathText.Text = settings.DouyinPath; await CalibrateAsync(); Start(); }; Closed += async (_, _) => { if (coordinator is not null) await coordinator.DisposeAsync(); overlay.Hide(); }; }
     private async Task CalibrateAsync() { try { var matches = await DouyinGsmTcDiscovery.DiscoverAsync(CancellationToken.None); IdentityText.Text = matches.Count == 1 ? $"已发现媒体身份：{matches[0].SourceAppUserModelId}" : "未发现唯一抖音媒体身份"; } catch { IdentityText.Text = "媒体身份发现不可用"; } }
-    private void Start() { coordinator ??= new RespawnCoordinator(overlay, settings with { DouyinPath = DouyinPathText.Text.Trim() }, SetStatus); coordinator.Start(); }
-    private async void Start_Click(object sender, RoutedEventArgs e) { settings = settings with { DouyinPath = DouyinPathText.Text.Trim() }; await AppSettingsStore.SaveAsync(settings); Start(); }
+    private void Start() { coordinator ??= new RespawnCoordinator(overlay, settings with { PreferredDouyinPath = DouyinPathText.Text.Trim() }, SetStatus); coordinator.Start(); }
+    private async void Start_Click(object sender, RoutedEventArgs e) { settings = settings with { PreferredDouyinPath = DouyinPathText.Text.Trim() }; await AppSettingsStore.SaveAsync(settings); Start(); }
     private async void Stop_Click(object sender, RoutedEventArgs e) { if (coordinator is not null) { await coordinator.DisposeAsync(); coordinator = null; } SetStatus("已停止监控"); }
     private void TestOverlay_Click(object sender, RoutedEventArgs e)
     {

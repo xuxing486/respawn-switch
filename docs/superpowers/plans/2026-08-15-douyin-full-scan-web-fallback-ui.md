@@ -296,6 +296,10 @@
       Uri? WebUri,
       string Code);
 
+  public sealed record DouyinRuntimePreferences(
+      DouyinDiscoveryMode DiscoveryMode,
+      bool OpenWebFallback);
+
   public interface IDouyinWebFallbackLauncher
   {
       ValueTask<bool> OpenAsync(CancellationToken cancellationToken);
@@ -398,7 +402,7 @@
 
 - [ ] **Step 5: Write failing coordinator decision tests around extracted pure handler**
 
-  Extract `RespawnDouyinActionPlanner.Plan(RespawnCycleId, DouyinDiscoveryResult, AppSettings)` and assert: desktop candidate produces desktop attach; scanning/no candidate plus fallback produces web once; found desktop never produces web; disabled fallback produces countdown-only.
+  Extract `RespawnDouyinActionPlanner.Plan(RespawnCycleId, DouyinDiscoveryResult, DouyinRuntimePreferences)` and assert: desktop candidate produces desktop attach; scanning/no candidate plus fallback produces web once; found desktop never produces web; disabled fallback produces countdown-only. The WPF layer maps `AppSettings` to `DouyinRuntimePreferences`, so the cross-platform Application tests never reference the Windows App project.
 
 - [ ] **Step 6: Run decision tests and verify RED**
 

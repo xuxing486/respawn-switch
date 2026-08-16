@@ -31,6 +31,7 @@ public sealed class DouyinDiscoveryControllerTests
         await controller.StartAsync(null);
 
         await controller.RescanAsync(null);
+        await detector.SecondStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.True(detector.FirstCancelled);
         Assert.Equal(2, detector.CallCount);
@@ -71,6 +72,7 @@ public sealed class DouyinDiscoveryControllerTests
     {
         public int CallCount { get; private set; }
         public bool FirstCancelled { get; private set; }
+        public TaskCompletionSource SecondStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async Task<DouyinDiscoveryResult> DetectAsync(string? savedPath, IProgress<DouyinScanProgress>? progress, CancellationToken cancellationToken)
         {
             CallCount++;
@@ -79,6 +81,8 @@ public sealed class DouyinDiscoveryControllerTests
                 try { await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken); }
                 catch (OperationCanceledException) { FirstCancelled = true; throw; }
             }
+
+            SecondStarted.TrySetResult();
 
             return new(DouyinDiscoveryStatus.NotFound, null, [], DouyinScanProgress.Empty, "not-found");
         }

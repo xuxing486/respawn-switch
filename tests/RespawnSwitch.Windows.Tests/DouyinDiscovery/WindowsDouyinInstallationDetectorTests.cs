@@ -58,6 +58,18 @@ public sealed class WindowsDouyinInstallationDetectorTests
         Assert.Empty(result.Candidates);
     }
 
+    [Fact]
+    public async Task DetectAsync_QuickSourceFails_StillRunsFullDiskScan()
+    {
+        var full = new FakeFullScanner([Candidate(@"F:\Portable\douyin.exe", DouyinDiscoverySource.FullDisk, false)]);
+        var detector = new WindowsDouyinInstallationDetector(new ThrowingQuickSource(), full);
+
+        var result = await detector.DetectAsync(null, null, CancellationToken.None);
+
+        Assert.Equal(DouyinDiscoveryStatus.Found, result.Status);
+        Assert.Equal(1, full.CallCount);
+    }
+
     private static DouyinCandidate Candidate(string path, DouyinDiscoverySource source, bool running) =>
         new(path, source, running, true, "ABC", new Version(1, 0), DateTimeOffset.UnixEpoch, "Douyin", "Douyin");
 
@@ -65,6 +77,12 @@ public sealed class WindowsDouyinInstallationDetectorTests
     {
         public Task<IReadOnlyList<DouyinCandidate>> FindAsync(string? savedPath, CancellationToken cancellationToken) =>
             Task.FromResult(candidates);
+    }
+
+    private sealed class ThrowingQuickSource : IDouyinQuickCandidateSource
+    {
+        public Task<IReadOnlyList<DouyinCandidate>> FindAsync(string? savedPath, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("quick source unavailable");
     }
 
     private sealed class FakeFullScanner(IReadOnlyList<DouyinCandidate> candidates, bool cancel = false) : IDouyinFullDiskScanner

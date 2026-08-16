@@ -37,7 +37,20 @@ public sealed class WindowsDouyinInstallationDetector(
 
         try
         {
-            var quickCandidates = await quickCandidateSource.FindAsync(savedPath, cancellationToken).ConfigureAwait(false);
+            IReadOnlyList<DouyinCandidate> quickCandidates;
+            try
+            {
+                quickCandidates = await quickCandidateSource.FindAsync(savedPath, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                quickCandidates = [];
+            }
+
             var quickResult = DouyinCandidateSelector.Select(quickCandidates);
             if (quickResult.Status == DouyinDiscoveryStatus.Found)
             {

@@ -40,6 +40,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
         douyin = new MvpDouyinWindowController(windowSource, new DouyinWindowLocator(windowSource, identityReader));
     }
     public void Start() => loop ??= Task.Run(RunAsync);
+    public void UpdateSettings(AppSettings value) => settings = value;
     public async Task StopAsync() { shutdown.Cancel(); if (loop is not null) try { await loop; } catch (OperationCanceledException) { } overlay.Dispatcher.Invoke(overlay.Hide); }
     public void ShowTestOverlay() => overlay.Dispatcher.Invoke(overlay.Show);
     private async Task RunAsync()

@@ -4,7 +4,7 @@ namespace RespawnSwitch.Windows.DouyinDiscovery;
 
 public sealed class FileSystemDouyinScanner(
     IFixedDriveCatalog fixedDriveCatalog,
-    IDouyinCandidateValidator validator)
+    IDouyinCandidateValidator validator) : IDouyinFullDiskScanner
 {
     private const int ProgressDirectoryInterval = 128;
 

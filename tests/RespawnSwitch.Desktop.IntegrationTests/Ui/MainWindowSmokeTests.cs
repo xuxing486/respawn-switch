@@ -19,6 +19,9 @@ public sealed class MainWindowSmokeTests
                     var application = new RespawnSwitch.App.App();
                     application.InitializeComponent();
                 }
+                Assert.Equal(
+                    System.Windows.ShutdownMode.OnMainWindowClose,
+                    System.Windows.Application.Current!.ShutdownMode);
                 var window = new MainWindow();
                 foreach (var name in new[]
                 {

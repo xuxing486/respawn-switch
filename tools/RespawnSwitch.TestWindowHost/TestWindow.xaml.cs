@@ -13,8 +13,11 @@ public partial class TestWindow : Window
     {
         this.options = options;
         InitializeComponent();
-        SourceInitialized += (_, _) => WriteReadyFile();
-        ContentRendered += (_, _) => ApplyMode();
+        ContentRendered += (_, _) =>
+        {
+            ApplyMode();
+            WriteReadyFile();
+        };
     }
 
     private void ApplyMode()

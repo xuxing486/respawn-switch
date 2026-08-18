@@ -1,3 +1,4 @@
+// Author: Stress Monster
 using RespawnSwitch.Application.Douyin;
 using RespawnSwitch.Application.Media;
 using RespawnSwitch.Application.Monitoring;
@@ -14,6 +15,8 @@ using System.Net.Http;
 using System.Collections.Concurrent;
 using RespawnSwitch.Core.Game;
 using RespawnSwitch.App.Browser;
+using RespawnSwitch.Application.Audio;
+using RespawnSwitch.Windows.Audio;
 
 namespace RespawnSwitch.App;
 
@@ -26,6 +29,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     private readonly ConcurrentDictionary<RespawnCycleId, byte> webCycles = new();
     private readonly RespawnCycleRunner cycleRunner = new();
     private readonly BrowserBridgeState? browserState;
+    private readonly RespawnAudioMuteCoordinator leagueAudio = new(new WindowsProcessAudioMuteController());
     private readonly RespawnSwitch.Windows.Identity.IWindowSnapshotSource windowSource; private readonly RespawnSwitch.Windows.Identity.IDouyinProcessIdentityReader identityReader;
     private readonly CancellationTokenSource shutdown = new(); private Task? loop; private GameWindowTarget? game; private IDouyinMediaController? media;
     public RespawnCoordinator(
@@ -48,7 +52,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     }
     public void Start() => loop ??= Task.Run(RunAsync);
     public void UpdateSettings(AppSettings value) => settings = value;
-    public async Task StopAsync() { shutdown.Cancel(); if (loop is not null) try { await loop; } catch (OperationCanceledException) { } overlay.Dispatcher.Invoke(overlay.Hide); }
+    public async Task StopAsync() { shutdown.Cancel(); if (loop is not null) try { await loop; } catch (OperationCanceledException) { } await leagueAudio.DisposeAsync(); overlay.Dispatcher.Invoke(overlay.Hide); }
     public void ShowTestOverlay() => overlay.Dispatcher.Invoke(overlay.Show);
     private async Task RunAsync()
     {
@@ -104,8 +108,10 @@ public sealed class RespawnCoordinator : IAsyncDisposable
 
     private async Task AttachDouyinAsync(AttachmentRequested x, GameWindowTarget capturedGame, CancellationToken token)
     {
+        var switchedToDouyin = false;
         try
         {
+            await leagueAudio.BeginAsync(x.CycleId, capturedGame.Identity.ProcessId, token);
             var plan = RespawnDouyinActionPlanner.Plan(
                     discovery.CurrentResult,
                     new DouyinRuntimePreferences(settings.DiscoveryMode, settings.OpenWebFallback));
@@ -114,7 +120,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 if (!webGuard.TryBegin(x.CycleId)) return;
                 if (browserState is null) { status("抖音网页问题：本地浏览器桥接未运行"); return; }
                 var webResult = await browserState.IssueAsync("play", TimeSpan.FromSeconds(3), token);
-                if (webResult.Ok) { webCycles[x.CycleId] = 0; status($"抖音网页已连接 · {webResult.Browser} 正在播放"); }
+                if (webResult.Ok) { webCycles[x.CycleId] = 0; switchedToDouyin = true; status($"抖音网页已连接 · {webResult.Browser} 正在播放"); }
                 else status($"抖音网页问题：{webResult.ErrorCode}");
                 return;
             }
@@ -159,6 +165,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 return;
             }
             desktopCycles[x.CycleId] = 0;
+            switchedToDouyin = true;
 
             MediaCommandResult result;
             DouyinMediaDiscovery? discovered = null;
@@ -187,6 +194,10 @@ public sealed class RespawnCoordinator : IAsyncDisposable
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex) { status($"抖音连接问题：{ex.GetType().Name}"); }
+        finally
+        {
+            if (!switchedToDouyin) await leagueAudio.CompleteAsync(x.CycleId);
+        }
     }
 
     private async Task CompleteRespawnAsync(RespawnCycleId cycleId, GameWindowTarget? capturedLeague)
@@ -208,6 +219,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             status("已复活 · League 已恢复");
         }
         catch (OperationCanceledException) { }
+        finally { await leagueAudio.CompleteAsync(cycleId); }
     }
 
     private static double ValidSeconds(double? value) => value is { } seconds && double.IsFinite(seconds) && seconds >= 0 ? seconds : 0;

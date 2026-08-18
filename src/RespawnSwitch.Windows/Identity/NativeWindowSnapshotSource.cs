@@ -34,12 +34,14 @@ public sealed class NativeWindowSnapshotSource : IWindowSnapshotSource
         var clientRect = GetClientBounds(handle, windowRect);
         var frameRect = GetExtendedFrameBounds(handle, windowRect);
         var monitorRect = GetMonitorBounds(handle, windowRect);
+        var restoreRect = GetRestoreBounds(handle, windowRect);
         return new NativeWindowSnapshot(
             new WindowIdentity(new NativeWindowHandle(handle), unchecked((int)processId), new string(className, 0, length)),
             User32.GetWindow(handle, User32.GwOwner) == 0,
             User32.IsWindowVisible(handle),
             (exStyle & User32.WsExToolWindow) != 0,
-            ToPixelRect(windowRect), clientRect, frameRect, monitorRect, style);
+            ToPixelRect(windowRect), clientRect, frameRect, monitorRect, style, exStyle, User32.IsIconic(handle), restoreRect,
+            User32.GetForegroundWindow() == handle);
     }
 
     private static PixelRect GetClientBounds(nint handle, User32.RECT fallback)
@@ -61,6 +63,12 @@ public sealed class NativeWindowSnapshotSource : IWindowSnapshotSource
         var monitor = User32.MonitorFromWindow(handle, User32.MonitorDefaultToNearest);
         var info = new User32.MONITORINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<User32.MONITORINFO>() };
         return monitor != 0 && User32.GetMonitorInfoW(monitor, ref info) ? ToPixelRect(info.rcMonitor) : ToPixelRect(fallback);
+    }
+
+    private static PixelRect GetRestoreBounds(nint handle, User32.RECT fallback)
+    {
+        var placement = new User32.WINDOWPLACEMENT { length = (uint)System.Runtime.InteropServices.Marshal.SizeOf<User32.WINDOWPLACEMENT>() };
+        return User32.GetWindowPlacement(handle, ref placement) ? ToPixelRect(placement.rcNormalPosition) : ToPixelRect(fallback);
     }
 
     private static PixelRect ToPixelRect(User32.RECT value) => new(value.Left, value.Top, value.Right, value.Bottom);

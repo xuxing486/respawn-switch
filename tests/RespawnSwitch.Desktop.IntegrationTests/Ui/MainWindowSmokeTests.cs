@@ -1,3 +1,4 @@
+// Author: Stress Monster
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Reflection;
@@ -12,7 +13,7 @@ namespace RespawnSwitch.Desktop.IntegrationTests.Ui;
 public sealed class MainWindowSmokeTests
 {
     [Fact]
-    public void MainWindow_ContainsCompactPrematchReadinessAndDiagnostics()
+    public void MainWindow_ContainsCompactPrematchReadinessAndFriendlyRuntimeStatus()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -30,10 +31,9 @@ public sealed class MainWindowSmokeTests
                 var window = new MainWindow();
                 foreach (var name in new[]
                 {
-                    "OverallStatusText", "LeagueStatusCard", "LeagueClientStateText", "LeagueGameDataStateText",
-                    "DouyinStatusCard", "DouyinTargetCombo", "DouyinStateText", "MediaStateText",
-                    "AutomationStatusCard", "AutomationStateText", "IssuePanel", "IssueText",
-                    "RetestButton", "TestOverlayButton", "EventLog"
+                    "OverallStatusText", "LeagueClientStateText", "LeagueGameDataStateText",
+                    "DouyinTargetCombo", "DouyinStateText", "MediaStateText", "TechnicalDetailsPanel",
+                    "AutomationStateText", "IssuePanel", "IssueText", "RetestButton", "TestOverlayButton", "EventLog"
                 })
                 {
                     Assert.NotNull(window.FindName(name));
@@ -53,16 +53,16 @@ public sealed class MainWindowSmokeTests
                 var handled = (Task)handle.Invoke(coordinator, [new LifeStateSynchronized(LifeState.Alive, 1L)])!;
                 Assert.True(handled.IsCompletedSuccessfully);
 
-                Assert.Equal("已连接 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
-                Assert.Equal("对局监控中", ((TextBlock)window.FindName("OverallStatusText")).Text);
+                Assert.Equal("正在对局 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
+                Assert.Equal("正在对局", ((TextBlock)window.FindName("OverallStatusText")).Text);
 
                 handled = (Task)handle.Invoke(coordinator, [new ConnectionBecameStale(2L)])!;
                 Assert.True(handled.IsCompletedSuccessfully);
-                Assert.Equal("连接不稳定", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
+                Assert.Equal("正在重新连接", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
 
                 handled = (Task)handle.Invoke(coordinator, [new ConnectionRestored(3L)])!;
                 Assert.True(handled.IsCompletedSuccessfully);
-                Assert.Equal("已连接 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
+                Assert.Equal("正在对局 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
             }
             catch (Exception exception)
             {

@@ -1,14 +1,171 @@
-<Window x:Class="RespawnSwitch.App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="RespawnSwitch · 复活切换" Height="690" Width="940" MinHeight="620" MinWidth="860" Background="{StaticResource AppBackground}" WindowStartupLocation="CenterScreen">
- <Window.Resources><Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="{StaticResource SurfaceBrush}"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="20"/><Setter Property="BorderBrush" Value="#202735"/><Setter Property="BorderThickness" Value="1"/></Style><Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}"/><Setter Property="FontSize" Value="12"/></Style><Style x:Key="Value" TargetType="TextBlock"><Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/></Style></Window.Resources>
- <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid Margin="30,26,30,30"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="RespawnSwitch" FontSize="29" FontWeight="Bold"/><TextBlock Text="赛前确认连接，阵亡时看抖音，复活后自动返回" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,6,0,0"/></StackPanel><Border Grid.Column="1" x:Name="OverallStatusPill" Background="#1B2531" CornerRadius="22" Padding="16,10" VerticalAlignment="Center"><StackPanel Orientation="Horizontal"><Ellipse x:Name="OverallStatusLight" Width="9" Height="9" Fill="{StaticResource WarningBrush}" Margin="0,0,9,0"/><TextBlock x:Name="OverallStatusText" Text="正在进行赛前检查" FontWeight="SemiBold"/></StackPanel></Border></Grid>
-  <Grid Grid.Row="1" Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/></Grid.ColumnDefinitions>
-   <Border x:Name="LeagueStatusCard" Style="{StaticResource Card}"><StackPanel><TextBlock Text="LEAGUE" Style="{StaticResource Label}"/><TextBlock Text="游戏连接" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,14"/><TextBlock Text="客户端" Style="{StaticResource Label}"/><TextBlock x:Name="LeagueClientStateText" Text="正在检测" Style="{StaticResource Value}" Margin="0,3,0,11"/><TextBlock Text="对局数据" Style="{StaticResource Label}"/><TextBlock x:Name="LeagueGameDataStateText" Text="等待进入游戏" Style="{StaticResource Value}"/></StackPanel></Border>
-   <Border x:Name="DouyinStatusCard" Grid.Column="2" Style="{StaticResource Card}"><StackPanel><TextBlock Text="DOUYIN" Style="{StaticResource Label}"/><TextBlock Text="抖音目标" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,12"/><ComboBox x:Name="DouyinTargetCombo" SelectionChanged="DouyinTarget_Changed"><ComboBoxItem Content="自动选择" Tag="Auto"/><ComboBoxItem Content="桌面客户端" Tag="Manual"/><ComboBoxItem Content="Chrome / Edge 网页" Tag="WebOnly"/></ComboBox><TextBlock x:Name="DouyinStateText" Text="请提前打开抖音" Style="{StaticResource Value}" Margin="0,12,0,0" TextWrapping="Wrap"/><TextBlock x:Name="MediaStateText" Text="播放控制等待连接" Style="{StaticResource Label}" Margin="0,5,0,0" TextWrapping="Wrap"/></StackPanel></Border>
-   <Border x:Name="AutomationStatusCard" Grid.Column="4" Style="{StaticResource Card}"><StackPanel><TextBlock Text="AUTOMATION" Style="{StaticResource Label}"/><TextBlock Text="自动流程" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,14"/><TextBlock x:Name="AutomationStateText" Text="悬浮层与本地计时已就绪" Style="{StaticResource Value}" TextWrapping="Wrap"/><TextBlock Text="无边框 · 不抢焦点 · 100ms 刷新" Style="{StaticResource Label}" Margin="0,7,0,0" TextWrapping="Wrap"/></StackPanel></Border>
-  </Grid>
-  <Border x:Name="IssuePanel" Grid.Row="2" Style="{StaticResource Card}" Margin="0,16,0,0" Background="#241B20" BorderBrush="#55323B"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions><Border Background="#4A2631" CornerRadius="18" Width="36" Height="36"><TextBlock Text="!" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#F97066"/></Border><StackPanel Grid.Column="1" Margin="14,0,0,0"><TextBlock Text="连接诊断" FontWeight="SemiBold"/><TextBlock x:Name="IssueText" Text="正在检查 League 客户端和抖音目标…" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/></StackPanel></Grid></Border>
-  <Grid Grid.Row="3" Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal"><Button x:Name="RetestButton" Content="重新检测连接" Style="{StaticResource PrimaryButton}" Click="Retest_Click"/><Button x:Name="TestOverlayButton" Content="预览英雄与倒计时" Margin="10,0,0,0" Click="TestOverlay_Click"/><Button Content="停止监控" Margin="10,0,0,0" Click="Stop_Click"/></StackPanel><TextBlock Grid.Column="1" Text="使用前请先打开抖音视频" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/></Grid>
-  <Border Grid.Row="4" Style="{StaticResource Card}" Margin="0,16,0,0"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="100"/></Grid.RowDefinitions><TextBlock Text="最近事件" FontWeight="SemiBold"/><ListBox x:Name="EventLog" Grid.Row="1" Margin="0,10,0,0" BorderThickness="0" Background="Transparent"/></Grid></Border>
- </Grid></ScrollViewer>
+<!-- Author: Stress Monster -->
+<Window x:Class="RespawnSwitch.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RespawnSwitch · Stress Monster" Height="650" Width="930"
+        MinHeight="600" MinWidth="860" WindowStartupLocation="CenterScreen"
+        Background="#0C0B15" FontFamily="Segoe UI, Microsoft YaHei UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="SoftText" Color="#AAA8BC"/>
+        <SolidColorBrush x:Key="Pink" Color="#F49AB5"/>
+        <SolidColorBrush x:Key="Mint" Color="#7EE0C2"/>
+        <Style x:Key="SoftCard" TargetType="Border">
+            <Setter Property="Background" Value="#D9161525"/>
+            <Setter Property="BorderBrush" Value="#2D2A43"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+        <Style x:Key="StatusTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#FFF9FC"/>
+        </Style>
+        <Style x:Key="SoftButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#242138"/>
+            <Setter Property="BorderBrush" Value="#3A3654"/>
+            <Setter Property="Padding" Value="17,10"/>
+        </Style>
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+            <BeginStoryboard>
+                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                    <DoubleAnimation Storyboard.TargetName="CatFloatTransform" Storyboard.TargetProperty="Y"
+                                     From="0" To="-7" Duration="0:0:2.8">
+                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="MascotGlow" Storyboard.TargetProperty="Opacity"
+                                     From="0.38" To="0.64" Duration="0:0:2.4"/>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid ClipToBounds="True">
+        <Ellipse Width="460" Height="460" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-180,-130,0" Opacity="0.32">
+            <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#74557E" Offset="0"/><GradientStop Color="#0074557E" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+            <Ellipse.Effect><BlurEffect Radius="36"/></Ellipse.Effect>
+        </Ellipse>
+        <Ellipse Width="360" Height="360" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-170,0,0,-190" Opacity="0.22">
+            <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#477D72" Offset="0"/><GradientStop Color="#00477D72" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+            <Ellipse.Effect><BlurEffect Radius="36"/></Ellipse.Effect>
+        </Ellipse>
+
+        <Grid Margin="30,25,26,25">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+
+            <Grid Grid.ColumnSpan="3">
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="34" Height="34" CornerRadius="10" Background="#312B43" BorderBrush="#5D526F" BorderThickness="1" Margin="0,0,11,0">
+                            <TextBlock Text="RS" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Pink}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="RespawnSwitch" FontSize="27" FontWeight="Bold" VerticalAlignment="Center" Foreground="#FFF9FC"/>
+                    </StackPanel>
+                    <TextBlock x:Name="FriendlyTitleText" Text="阵亡切换抖音，复活自动返回"
+                               Foreground="{StaticResource SoftText}" FontSize="13" Margin="45,4,0,0"/>
+                </StackPanel>
+                <Border x:Name="OverallStatusPill" Grid.Column="1" Background="#282238" CornerRadius="20" Padding="14,9" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="OverallStatusLight" Width="9" Height="9" Fill="#F0B86E" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="OverallStatusText" Text="正在检查" FontWeight="SemiBold" FontSize="13"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="0,24,0,0">
+                <Border Style="{StaticResource SoftCard}">
+                    <StackPanel>
+                        <TextBlock Text="连接状态" Foreground="{StaticResource SoftText}" FontSize="12" Margin="2,0,0,12"/>
+
+                        <Border Background="#211E31" CornerRadius="15" Padding="15,13" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" CornerRadius="18" Background="#3A3047" VerticalAlignment="Center">
+                                    <TextBlock Text="★" Foreground="{StaticResource Pink}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="2,0,0,0">
+                                    <TextBlock x:Name="GameStatusTitleText" Text="英雄联盟" Style="{StaticResource StatusTitle}"/>
+                                    <TextBlock x:Name="LeagueClientStateText" Text="正在找游戏" Foreground="{StaticResource SoftText}" Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="LeagueGameDataStateText" Text="等待你进入游戏" Foreground="#7EE0C2" FontSize="12" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#211E31" CornerRadius="15" Padding="15,13">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" CornerRadius="18" Background="#2B3940" VerticalAlignment="Center">
+                                    <TextBlock Text="♪" Foreground="{StaticResource Mint}" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="2,0,0,0">
+                                    <TextBlock x:Name="DouyinStatusTitleText" Text="抖音" Style="{StaticResource StatusTitle}"/>
+                                    <TextBlock x:Name="DouyinStateText" Text="请先打开一个视频" Foreground="{StaticResource SoftText}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="MediaStateText" Text="等待视频准备好" Foreground="#7EE0C2" FontSize="12" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="IssuePanel" Style="{StaticResource SoftCard}" Margin="0,12,0,0" Padding="15" Background="#211D2E">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <Border Width="30" Height="30" CornerRadius="15" Background="#3D3044">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource Pink}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="IssueText" Grid.Column="1" Text="正在检查游戏与抖音。" Foreground="#D8D3E3"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="4,0,0,0"/>
+                    </Grid>
+                </Border>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="抖音来源" Foreground="{StaticResource SoftText}" FontSize="12" Margin="2,0,0,5"/>
+                        <ComboBox x:Name="DouyinTargetCombo" Width="220" SelectionChanged="DouyinTarget_Changed">
+                            <ComboBoxItem Content="自动选择" Tag="Auto"/>
+                            <ComboBoxItem Content="抖音客户端" Tag="Manual"/>
+                            <ComboBoxItem Content="抖音网页" Tag="WebOnly"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                        <Button x:Name="RetestButton" Content="重新检查" Style="{StaticResource PrimaryButton}" Click="Retest_Click"/>
+                        <Button x:Name="TestOverlayButton" Content="预览悬浮窗" Style="{StaticResource SoftButton}" Margin="8,0,0,0" Click="TestOverlay_Click"/>
+                    </StackPanel>
+                </Grid>
+
+                <Button Content="暂停助手" Style="{StaticResource SoftButton}" HorizontalAlignment="Left" Padding="12,6"
+                        FontSize="11" Foreground="{StaticResource SoftText}" Margin="0,12,0,0" Click="Stop_Click"/>
+            </StackPanel>
+
+            <Grid Grid.Column="2" Grid.Row="1" Margin="0,16,0,0">
+                <Ellipse x:Name="MascotGlow" Width="330" Height="330" VerticalAlignment="Center" Opacity="0.45">
+                    <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#7A4E637B" Offset="0"/><GradientStop Color="#004E637B" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+                    <Ellipse.Effect><BlurEffect Radius="28"/></Ellipse.Effect>
+                </Ellipse>
+                <Image x:Name="CatgirlMascotImage" Source="Assets/stress-monster-nekomaid-v1.png" Stretch="Uniform"
+                       VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxHeight="505" RenderOptions.BitmapScalingMode="HighQuality">
+                    <Image.RenderTransform><TranslateTransform x:Name="CatFloatTransform"/></Image.RenderTransform>
+                </Image>
+                <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Background="#D91A1828" BorderBrush="#403A57"
+                        BorderThickness="1" CornerRadius="16" Padding="13,8" Margin="0,0,0,9">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="7" Height="7" Fill="{StaticResource Mint}" Margin="0,0,8,0"/>
+                        <TextBlock Text="SYSTEM READY" Foreground="#DDE7E5" FontSize="11" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Grid x:Name="TechnicalDetailsPanel" Visibility="Collapsed">
+                <TextBlock x:Name="AutomationStateText"/>
+                <ListBox x:Name="EventLog"/>
+                <TextBlock Text="Stress Monster"/>
+            </Grid>
+        </Grid>
+    </Grid>
 </Window>

@@ -126,24 +126,64 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             }
 
             var douyinPath = plan.DesktopCandidate.NormalizedPath;
-                settings = settings with
-                {
-                    PreferredDouyinPath = douyinPath,
-                    LastValidatedSignatureThumbprint = plan.DesktopCandidate.SignatureThumbprint
-                };
-                await AppSettingsStore.SaveAsync(settings);
-                var windowClass = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(2), token);
+            var windowClass = settings.DouyinWindowClass;
+            var usedCachedWindowClass = !string.IsNullOrWhiteSpace(windowClass);
+            if (string.IsNullOrWhiteSpace(windowClass))
+            {
+                windowClass = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(1), token);
                 if (windowClass is null) { status("抖音桌面问题：请提前打开唯一的抖音主窗口"); return; }
-                settings = settings with { DouyinWindowClass = windowClass }; await AppSettingsStore.SaveAsync(settings);
-                var attached = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, capturedGame, capturedGame.Bounds, douyinPath, windowClass, false), token);
-                if (!attached.PostconditionVerified) { status($"抖音窗口问题：{attached.FailureCode}"); return; }
-                desktopCycles[x.CycleId] = 0;
-                var candidates = await FindMediaAsync(TimeSpan.FromSeconds(4), token);
-                if (candidates is null) { status("抖音媒体问题：请先打开并播放一次视频"); return; }
-                settings = settings with { SourceAppUserModelId = candidates.SourceAppUserModelId, DiagnosticFingerprint = candidates.DiagnosticFingerprint }; await AppSettingsStore.SaveAsync(settings);
-                media = new GsmtcDouyinMediaController(new GsmtcMediaProfile(candidates.SourceAppUserModelId, candidates.DiagnosticFingerprint));
-                var result = await media.PlayAsync(token);
-                status(result.StateVerified ? "抖音已连接 · 正在播放" : $"抖音媒体问题：{result.FailureCode}");
+            }
+
+            IDouyinMediaController? cycleMedia = null;
+            Task<MediaCommandResult>? playTask = null;
+            if (!string.IsNullOrWhiteSpace(settings.SourceAppUserModelId) && !string.IsNullOrWhiteSpace(settings.DiagnosticFingerprint))
+            {
+                cycleMedia = new GsmtcDouyinMediaController(new GsmtcMediaProfile(settings.SourceAppUserModelId, settings.DiagnosticFingerprint));
+                playTask = cycleMedia.PlayAsync(token).AsTask();
+            }
+
+            var attached = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, capturedGame, capturedGame.Bounds, douyinPath, windowClass, false), token);
+            if (!attached.PostconditionVerified && usedCachedWindowClass)
+            {
+                var recalibrated = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(1), token);
+                if (!string.IsNullOrWhiteSpace(recalibrated))
+                {
+                    windowClass = recalibrated;
+                    attached = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, capturedGame, capturedGame.Bounds, douyinPath, windowClass, false), token);
+                }
+            }
+            if (!attached.PostconditionVerified)
+            {
+                if (cycleMedia is not null) _ = await cycleMedia.PauseAsync(token);
+                status($"抖音窗口问题：{attached.FailureCode}");
+                return;
+            }
+            desktopCycles[x.CycleId] = 0;
+
+            MediaCommandResult result;
+            DouyinMediaDiscovery? discovered = null;
+            if (playTask is not null)
+            {
+                result = await playTask;
+            }
+            else
+            {
+                discovered = await FindMediaAsync(TimeSpan.FromSeconds(1), token);
+                if (discovered is null) { status("抖音媒体问题：请先打开并播放一次视频"); return; }
+                cycleMedia = new GsmtcDouyinMediaController(new GsmtcMediaProfile(discovered.SourceAppUserModelId, discovered.DiagnosticFingerprint));
+                result = await cycleMedia.PlayAsync(token);
+            }
+            media = cycleMedia;
+            settings = settings with
+            {
+                PreferredDouyinPath = douyinPath,
+                LastValidatedSignatureThumbprint = plan.DesktopCandidate.SignatureThumbprint,
+                DouyinWindowClass = windowClass,
+                SourceAppUserModelId = discovered?.SourceAppUserModelId ?? settings.SourceAppUserModelId,
+                DiagnosticFingerprint = discovered?.DiagnosticFingerprint ?? settings.DiagnosticFingerprint
+            };
+            await AppSettingsStore.SaveAsync(settings);
+            status(result.StateVerified ? "抖音已连接 · 已置顶并播放" : $"抖音媒体问题：{result.FailureCode}");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex) { status($"抖音连接问题：{ex.GetType().Name}"); }
@@ -178,10 +218,15 @@ public sealed class RespawnCoordinator : IAsyncDisposable
         do
         {
             var candidates = new List<DouyinWindowCandidate>();
-            foreach (var w in windowSource.EnumerateTopLevelWindows())
+            var eligible = windowSource.EnumerateTopLevelWindows()
+                .Where(w => w.IsTopLevel && w.IsVisible && !w.IsToolWindow && w.Bounds.Width > 0 && w.Bounds.Height > 0)
+                .ToArray();
+            foreach (var processWindows in eligible.GroupBy(w => w.Identity.ProcessId))
             {
-                var process = await identityReader.TryReadAsync(w.Identity.ProcessId, token);
-                if (process is not null) candidates.Add(new(process.NormalizedExecutablePath, w.Identity.WindowClass, w.IsVisible, w.IsTopLevel, w.IsToolWindow, w.Identity.Handle));
+                var process = await identityReader.TryReadAsync(processWindows.Key, token);
+                if (process is null) continue;
+                foreach (var w in processWindows)
+                    candidates.Add(new(process.NormalizedExecutablePath, w.Identity.WindowClass, w.IsVisible, w.IsTopLevel, w.IsToolWindow, w.Identity.Handle));
             }
             var result = DouyinWindowCalibration.SelectUniqueDouyinWindowClass(candidates, douyinPath);
             if (result is not null) return result;

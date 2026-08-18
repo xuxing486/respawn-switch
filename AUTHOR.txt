@@ -1,0 +1,4 @@
+RespawnSwitch
+作者 / Author: Stress Monster
+
+该署名同时写入 Windows 程序元数据、浏览器扩展清单和主题图片元数据。

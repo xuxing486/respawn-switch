@@ -1,3 +1,4 @@
+// Author: Stress Monster
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -43,7 +44,7 @@ public partial class MainWindow : Window
         initialized = true;
         browserServer = new BrowserBridgeServer(browserState, Path.Combine(AppSettingsStore.DirectoryPath, "browser-status.json"));
         try { browserServer.Start(); }
-        catch (Exception ex) { SetIssue($"浏览器连接问题 · 本地桥接启动失败：{ex.GetType().Name}", true); }
+        catch { SetIssue("抖音网页连接没有启动，请重新打开本程序。", true); }
         await discovery.StartAsync(settings.PreferredDouyinPath);
         StartMonitoring();
         readinessTimer.Start();
@@ -69,7 +70,7 @@ public partial class MainWindow : Window
     private async Task RefreshReadinessAsync()
     {
         var league = leagueClient.Probe();
-        LeagueClientStateText.Text = league.IsReady ? "已检测 · 可以赛前准备" : "未检测到客户端";
+        LeagueClientStateText.Text = league.IsReady ? "游戏已打开" : "请先打开英雄联盟";
         DouyinMediaDiscovery[] mediaMatches;
         try { mediaMatches = (await DouyinGsmTcDiscovery.DiscoverAsync(CancellationToken.None)).ToArray(); }
         catch { mediaMatches = []; }
@@ -81,21 +82,21 @@ public partial class MainWindow : Window
 
         DouyinStateText.Text = mode switch
         {
-            DouyinDiscoveryMode.WebOnly => web ? "Chrome / Edge 抖音网页已连接" : "网页未连接",
-            DouyinDiscoveryMode.Manual => desktop ? "桌面客户端已检测" : "请提前打开桌面抖音",
-            _ when desktop && desktopMedia => "自动选择 · 桌面客户端",
-            _ when web => "自动选择 · 抖音网页版",
-            _ => "未找到可用抖音目标"
+            DouyinDiscoveryMode.WebOnly => web ? "抖音网页已打开" : "请先打开抖音网页",
+            DouyinDiscoveryMode.Manual => desktop ? "抖音客户端已打开" : "请先打开抖音客户端",
+            _ when desktop && desktopMedia => "已找到抖音客户端",
+            _ when web => "已找到抖音网页",
+            _ => "请先打开一个抖音视频"
         };
-        MediaStateText.Text = desktopMedia ? "GSMTC Play / Pause 已验证" : web ? "浏览器扩展 Play / Pause 已连接" : "播放控制未就绪";
+        MediaStateText.Text = desktopMedia || web ? "可以自动播放和暂停" : "等待视频准备好";
 
-        if (!league.IsReady) { SetOverall("等待 League 客户端", false); SetIssue("League 问题 · 请启动并登录 League 客户端。", true); }
+        if (!league.IsReady) { SetOverall("等待游戏", false); SetIssue("请启动并登录英雄联盟。", true); }
         else if (!targetReady)
         {
-            SetOverall("部分功能未就绪", false);
-            SetIssue(mode == DouyinDiscoveryMode.WebOnly ? "抖音网页问题 · 请安装扩展并打开唯一的 douyin.com 视频标签页。" : "抖音问题 · 请提前打开视频；桌面端需要唯一 GSMTC 会话。", true);
+            SetOverall("等待抖音", false);
+            SetIssue(mode == DouyinDiscoveryMode.WebOnly ? "请打开一个抖音视频网页。" : "请打开抖音并播放一次视频。", true);
         }
-        else { SetOverall("赛前准备完成 · 等待进入对局", true); SetIssue("League、抖音和本地倒计时均已准备。进入对局后会自动连接游戏数据。", false); }
+        else { SetOverall("准备就绪", true); SetIssue("阵亡时自动切到抖音，复活后自动返回游戏。", false); }
     }
 
     private static bool ReadBrowserReady()
@@ -110,7 +111,7 @@ public partial class MainWindow : Window
         catch { return false; }
     }
 
-    private async void Retest_Click(object sender, RoutedEventArgs e) { SetOverall("正在重新检测", false); await discovery.RescanAsync(settings.PreferredDouyinPath); await RefreshReadinessAsync(); }
+    private async void Retest_Click(object sender, RoutedEventArgs e) { SetOverall("正在重新检查", false); await discovery.RescanAsync(settings.PreferredDouyinPath); await RefreshReadinessAsync(); }
 
     private async void DouyinTarget_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -119,7 +120,7 @@ public partial class MainWindow : Window
         await AppSettingsStore.SaveAsync(settings); coordinator?.UpdateSettings(settings); await RefreshReadinessAsync();
     }
 
-    private async void Stop_Click(object sender, RoutedEventArgs e) { if (coordinator is not null) { await coordinator.DisposeAsync(); coordinator = null; } SetOverall("已停止", false); AddEvent("系统 · 已停止监控"); }
+    private async void Stop_Click(object sender, RoutedEventArgs e) { if (coordinator is not null) { await coordinator.DisposeAsync(); coordinator = null; } SetOverall("已暂停", false); SetIssue("自动切换已经暂停。", true); AddEvent("系统 · 已停止监控"); }
 
     private void TestOverlay_Click(object sender, RoutedEventArgs e)
     {
@@ -136,20 +137,31 @@ public partial class MainWindow : Window
         if (text.Contains("League 对局数据已连接", StringComparison.Ordinal) || text.Contains("League 对局数据已恢复", StringComparison.Ordinal))
         {
             var dead = text.Contains("当前阵亡", StringComparison.Ordinal);
-            LeagueGameDataStateText.Text = dead ? "已连接 · 当前阵亡" : "已连接 · 当前存活";
-            SetOverall(dead ? "对局监控中 · 当前阵亡" : "对局监控中", true);
-            SetIssue("League 对局数据读取正常。", false);
+            LeagueGameDataStateText.Text = dead ? "正在对局 · 当前阵亡" : "正在对局 · 当前存活";
+            SetOverall(dead ? "当前阵亡" : "正在对局", true);
+            SetIssue(dead ? "已切换到抖音，悬浮窗会显示复活时间。" : "游戏连接正常。", false);
         }
         else if (text.Contains("League 数据连接问题", StringComparison.Ordinal))
         {
-            LeagueGameDataStateText.Text = "连接不稳定";
-            SetOverall("对局连接不稳定", false);
-            SetIssue(text, true);
+            LeagueGameDataStateText.Text = "正在重新连接";
+            SetOverall("正在重新连接游戏", false);
+            SetIssue("游戏数据暂时没有回应，正在自动重试。", true);
         }
-        else if (text.Contains("已检测到死亡", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前阵亡"; SetOverall("对局监控中 · 当前阵亡", true); }
-        else if (text.Contains("复活", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前存活"; SetOverall("对局监控中", true); }
-        else if (text.Contains("问题", StringComparison.Ordinal) || text.Contains("未连接", StringComparison.Ordinal)) SetIssue(text, true);
+        else if (text.Contains("已检测到死亡", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "正在对局 · 当前阵亡"; SetOverall("当前阵亡", true); }
+        else if (text.Contains("复活", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "正在对局 · 当前存活"; SetOverall("正在对局", true); }
+        else if (text.Contains("问题", StringComparison.Ordinal) || text.Contains("未连接", StringComparison.Ordinal)) SetIssue(FriendlyIssue(text), true);
     });
+
+    private static string FriendlyIssue(string text)
+    {
+        if (text.Contains("媒体", StringComparison.OrdinalIgnoreCase) || text.Contains("播放", StringComparison.Ordinal))
+            return "抖音没有开始播放，请先手动播放一次视频。";
+        if (text.Contains("抖音", StringComparison.Ordinal) || text.Contains("窗口", StringComparison.Ordinal))
+            return "抖音没有成功显示到前面，请让游戏、抖音和本程序使用相同权限启动。";
+        if (text.Contains("League", StringComparison.OrdinalIgnoreCase) || text.Contains("游戏", StringComparison.Ordinal))
+            return "游戏数据暂时没有回应，正在自动重试。";
+        return "自动切换遇到问题，请点击重新检查。";
+    }
 
     private void SetOverall(string text, bool ready) { OverallStatusText.Text = text; OverallStatusLight.Fill = (System.Windows.Media.Brush)FindResource(ready ? "SuccessBrush" : "WarningBrush"); OverallStatusPill.Background = new SolidColorBrush(ready ? System.Windows.Media.Color.FromRgb(20, 54, 47) : System.Windows.Media.Color.FromRgb(44, 40, 30)); }
     private void SetIssue(string text, bool warning) { IssueText.Text = text; IssuePanel.Background = new SolidColorBrush(warning ? System.Windows.Media.Color.FromRgb(36, 27, 32) : System.Windows.Media.Color.FromRgb(20, 45, 39)); IssuePanel.BorderBrush = new SolidColorBrush(warning ? System.Windows.Media.Color.FromRgb(85, 50, 59) : System.Windows.Media.Color.FromRgb(36, 91, 73)); }

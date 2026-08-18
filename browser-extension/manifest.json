@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "RespawnSwitch 抖音网页连接器",
-  "version": "0.3.1",
+  "version": "0.3.4",
+  "author": "Stress Monster",
   "description": "在英雄联盟阵亡/复活时对唯一的抖音网页视频执行可验证的播放与暂停。",
   "permissions": ["tabs", "alarms"],
   "host_permissions": [

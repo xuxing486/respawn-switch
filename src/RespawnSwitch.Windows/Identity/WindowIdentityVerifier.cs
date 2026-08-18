@@ -11,7 +11,11 @@ public sealed record NativeWindowSnapshot(
     PixelRect ClientBounds,
     PixelRect ExtendedFrameBounds,
     PixelRect MonitorBounds,
-    nint Style);
+    nint Style,
+    nint ExtendedStyle = 0,
+    bool IsMinimized = false,
+    PixelRect RestoreBounds = default,
+    bool IsForeground = false);
 
 public interface IWindowSnapshotSource
 {

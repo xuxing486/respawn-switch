@@ -1,9 +1,10 @@
+# Author: Stress Monster
 [CmdletBinding()]
 param([switch]$Restore, [string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'src\RespawnSwitch.App\RespawnSwitch.App.csproj'
-$version = '0.3.1'
+$version = '0.3.4'
 $artifacts = Join-Path $root 'artifacts'
 $publish = Join-Path $artifacts "publish\$version-win-x64"
 $archive = Join-Path $root "artifacts\RespawnSwitch-$version-win-x64.zip"
@@ -25,12 +26,19 @@ Get-ChildItem -LiteralPath $publish -Filter '*.pdb' -File | Remove-Item -Force
 $extensionSource = Join-Path $root 'browser-extension'
 $extensionTarget = Join-Path $publish 'browser-extension'
 Copy-Item -LiteralPath $extensionSource -Destination $extensionTarget -Recurse
-$guide = Join-Path $root 'docs\RespawnSwitch-0.3.1-使用手册.txt'
-Copy-Item -LiteralPath $guide -Destination (Join-Path $publish '使用手册.txt')
+$userGuides = @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -File -Filter "RespawnSwitch-$version-*.txt")
+$developerGuides = @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -File -Filter "RespawnSwitch-$version-*.md")
+if ($userGuides.Count -ne 1 -or $developerGuides.Count -ne 1) { throw 'Expected exactly one user guide and one developer guide.' }
+$userGuide = $userGuides[0]
+$developerGuide = $developerGuides[0]
+$authorNotice = Join-Path $root 'AUTHOR.txt'
+Copy-Item -LiteralPath $userGuide.FullName -Destination (Join-Path $publish $userGuide.Name)
+Copy-Item -LiteralPath $developerGuide.FullName -Destination (Join-Path $publish $developerGuide.Name)
+Copy-Item -LiteralPath $authorNotice -Destination (Join-Path $publish 'AUTHOR.txt')
 $selfTest = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru -WindowStyle Hidden
 if ($selfTest.ExitCode -ne 0) { throw "Self-test failed with exit code $($selfTest.ExitCode)" }
 $hashes = Get-ChildItem -File $publish -Recurse | Sort-Object FullName | ForEach-Object {
-    $relative = [System.IO.Path]::GetRelativePath($publish, $_.FullName).Replace('\', '/')
+    $relative = $_.FullName.Substring($publish.Length).TrimStart([char]92).Replace('\', '/')
     "$( (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() )  $relative"
 }
 $hashes | Set-Content -Encoding ascii (Join-Path $publish 'SHA256SUMS')

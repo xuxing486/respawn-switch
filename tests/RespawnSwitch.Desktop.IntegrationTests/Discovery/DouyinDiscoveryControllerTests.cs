@@ -1,3 +1,4 @@
+// Author: Stress Monster
 using RespawnSwitch.App;
 using RespawnSwitch.Application.Douyin;
 
@@ -16,7 +17,7 @@ public sealed class DouyinDiscoveryControllerTests
         await controller.StartAsync(@"D:\Preferred\douyin.exe");
 
         Assert.Equal(DouyinDiscoveryStatus.Scanning, controller.CurrentResult.Status);
-        Assert.True(detector.Started.Task.IsCompleted);
+        await detector.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
         detector.Complete(Found(@"E:\Real\douyin.exe"));
         await controller.WaitForIdleAsync();
         Assert.Equal(DouyinDiscoveryStatus.Found, controller.CurrentResult.Status);

@@ -12,6 +12,10 @@ public partial class RespawnOverlayWindow : Window
     private const int GwlExStyle = -20;
     private const nint WsExTransparent = 0x00000020;
     private const nint WsExNoActivate = 0x08000000;
+    private const nint HwndTopmost = -1;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoActivate = 0x0010;
     private readonly DispatcherTimer timer;
     private LocalRespawnCountdown? countdown;
 
@@ -55,6 +59,11 @@ public partial class RespawnOverlayWindow : Window
         var frame = countdown.Snapshot();
         CountdownText.Text = frame.DisplaySeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
         OverlayStatusText.Text = frame.AwaitingRespawnConfirmation ? "正在确认复活" : "本地复活计时";
+        if (IsVisible)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            _ = SetWindowPos(hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoSize | SwpNoMove | SwpNoActivate);
+        }
     }
 
     public void MarkConnectionUnstable() => OverlayStatusText.Text = "连接不稳定";
@@ -73,4 +82,8 @@ public partial class RespawnOverlayWindow : Window
 
     [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     private static extern nint SetWindowLongPtr(nint hWnd, int index, nint value);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 }

@@ -25,15 +25,24 @@ public sealed class LeagueWindowLocator(IWindowSnapshotSource windows, IToolhelp
         return ValueTask.FromResult<GameWindowTarget?>(candidates.Length == 1 ? candidates[0] : null);
     }
 
-    public ValueTask<bool> TryRestoreFocusOnceAsync(GameWindowTarget target, CancellationToken cancellationToken)
+    public async ValueTask<bool> TryRestoreFocusOnceAsync(GameWindowTarget target, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (target.Identity.Handle.IsNull) return ValueTask.FromResult(false);
+        if (target.Identity.Handle.IsNull) return false;
         var handle = target.Identity.Handle.Value;
-        if (User32.GetForegroundWindow() == handle) return ValueTask.FromResult(true);
-        _ = User32.ShowWindowAsync(handle, User32.SwShownoactivate);
-        var requested = User32.SetForegroundWindow(handle);
-        return ValueTask.FromResult(requested && User32.GetForegroundWindow() == handle);
+        if (User32.GetForegroundWindow() == handle) return true;
+        var snapshot = windows.TryGetWindow(target.Identity.Handle);
+        _ = User32.ShowWindowAsync(handle, snapshot?.IsMinimized == true ? User32.SwRestore : User32.SwShownoactivate);
+        _ = User32.SetWindowPos(handle, User32.HwndTop, 0, 0, 0, 0,
+            User32.SwpNoMove | User32.SwpNoSize | User32.SwpShowWindow);
+        _ = WindowActivation.TryActivate(handle);
+        var until = DateTime.UtcNow + TimeSpan.FromMilliseconds(300);
+        do
+        {
+            if (User32.GetForegroundWindow() == handle) return true;
+            await Task.Delay(15, cancellationToken);
+        } while (DateTime.UtcNow < until);
+        return false;
     }
     public ValueTask FlashTaskbarAsync(GameWindowTarget target, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 

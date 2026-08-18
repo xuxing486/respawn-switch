@@ -1,4 +1,4 @@
 [
-  { "riotId": "Player#NA1", "championName": "Annie", "isDead": true, "respawnTimer": 18.75, "scores": { "deaths": 1 } },
-  { "riotId": "Other#NA1", "championName": "Annie", "isDead": false, "respawnTimer": 0, "scores": { "deaths": 0 } }
+  { "riotId": "Player#NA1", "championName": "Annie", "isDead": true, "respawnTimer": 18.75, "scores": { "kills": 4, "deaths": 1, "assists": 7 } },
+  { "riotId": "Other#NA1", "championName": "Annie", "isDead": false, "respawnTimer": 0, "scores": { "kills": 0, "deaths": 0, "assists": 2 } }
 ]

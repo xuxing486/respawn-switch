@@ -1,12 +1,16 @@
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Microsoft.Win32;
+using System.Windows.Threading;
 using RespawnSwitch.App.Overlay;
 using RespawnSwitch.Application.Douyin;
 using RespawnSwitch.Application.Windows;
 using RespawnSwitch.Windows.DouyinDiscovery;
+using RespawnSwitch.Windows.Identity;
 using RespawnSwitch.Windows.Media;
+using RespawnSwitch.Windows.Windows;
 
 namespace RespawnSwitch.App;
 
@@ -14,6 +18,8 @@ public partial class MainWindow : Window
 {
     private readonly RespawnOverlayWindow overlay = new();
     private readonly DouyinDiscoveryController discovery = new(new WindowsDouyinInstallationDetector());
+    private readonly LeagueClientPresenceProbe leagueClient = new(new NativeWindowSnapshotSource(), new ToolhelpProcessSnapshot());
+    private readonly DispatcherTimer readinessTimer;
     private RespawnCoordinator? coordinator;
     private AppSettings settings = AppSettings.Default;
     private bool initialized;
@@ -21,7 +27,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        discovery.Changed += Discovery_Changed;
+        readinessTimer = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, async (_, _) => await RefreshReadinessAsync(), Dispatcher);
+        discovery.Changed += (_, _) => _ = Dispatcher.InvokeAsync(RefreshReadinessAsync);
         Loaded += OnLoadedAsync;
         Closed += OnClosedAsync;
     }
@@ -29,289 +36,102 @@ public partial class MainWindow : Window
     private async void OnLoadedAsync(object sender, RoutedEventArgs e)
     {
         settings = await AppSettingsStore.LoadAsync();
-        AutoDetectToggle.IsChecked = settings.AutoDetectDouyin;
-        WebFallbackToggle.IsChecked = settings.OpenWebFallback;
-        DiscoveryModeCombo.SelectedIndex = settings.DiscoveryMode switch
-        {
-            DouyinDiscoveryMode.Manual => 1,
-            DouyinDiscoveryMode.WebOnly => 2,
-            _ => 0
-        };
-        DouyinPathText.Text = settings.PreferredDouyinPath ?? "尚未确认";
+        DouyinTargetCombo.SelectedIndex = settings.DiscoveryMode switch { DouyinDiscoveryMode.Manual => 1, DouyinDiscoveryMode.WebOnly => 2, _ => 0 };
         initialized = true;
-
-        if (settings.AutoDetectDouyin && settings.DiscoveryMode != DouyinDiscoveryMode.WebOnly)
-        {
-            await discovery.StartAsync(settings.PreferredDouyinPath);
-        }
-        else
-        {
-            UpdateDiscoveryUi(discovery.CurrentResult);
-        }
-
-        await CalibrateAsync();
+        await discovery.StartAsync(settings.PreferredDouyinPath);
         StartMonitoring();
+        readinessTimer.Start();
+        await RefreshReadinessAsync();
     }
 
     private async void OnClosedAsync(object? sender, EventArgs e)
     {
-        discovery.Changed -= Discovery_Changed;
-        if (coordinator is not null)
-        {
-            await coordinator.DisposeAsync();
-        }
-
+        readinessTimer.Stop();
+        if (coordinator is not null) await coordinator.DisposeAsync();
         await discovery.DisposeAsync();
-        overlay.Hide();
-    }
-
-    private async Task CalibrateAsync()
-    {
-        try
-        {
-            var matches = await DouyinGsmTcDiscovery.DiscoverAsync(CancellationToken.None);
-            IdentityText.Text = matches.Count == 1 ? "已发现抖音媒体会话" : "等待抖音媒体会话";
-        }
-        catch (Exception)
-        {
-            IdentityText.Text = "媒体发现暂不可用";
-        }
+        overlay.EndCycle();
     }
 
     private void StartMonitoring()
     {
-        coordinator ??= new RespawnCoordinator(overlay, settings, SetStatus, discovery);
+        coordinator ??= new RespawnCoordinator(overlay, settings, SetRuntimeStatus, discovery);
         coordinator.Start();
-        SetStatus("正在监控 League Live Client…");
+        AddEvent("League · 正在等待对局数据");
     }
 
-    private async void Start_Click(object sender, RoutedEventArgs e)
+    private async Task RefreshReadinessAsync()
     {
-        await SaveSettingsAsync();
-        StartMonitoring();
-    }
+        var league = leagueClient.Probe();
+        LeagueClientStateText.Text = league.IsReady ? "已检测 · 可以赛前准备" : "未检测到客户端";
+        DouyinMediaDiscovery[] mediaMatches;
+        try { mediaMatches = (await DouyinGsmTcDiscovery.DiscoverAsync(CancellationToken.None)).ToArray(); }
+        catch { mediaMatches = []; }
+        var desktop = discovery.CurrentResult.Status == DouyinDiscoveryStatus.Found;
+        var desktopMedia = mediaMatches.Length == 1;
+        var web = ReadBrowserReady();
+        var mode = settings.DiscoveryMode;
+        var targetReady = mode switch { DouyinDiscoveryMode.Manual => desktop && desktopMedia, DouyinDiscoveryMode.WebOnly => web, _ => (desktop && desktopMedia) || web };
 
-    private async void Stop_Click(object sender, RoutedEventArgs e)
-    {
-        if (coordinator is not null)
+        DouyinStateText.Text = mode switch
         {
-            await coordinator.DisposeAsync();
-            coordinator = null;
-        }
-
-        SetStatus("已停止监控");
-    }
-
-    private async void Rescan_Click(object sender, RoutedEventArgs e)
-    {
-        SetStatus("正在扫描所有本机固定磁盘…");
-        await discovery.RescanAsync(settings.PreferredDouyinPath);
-    }
-
-    private async void CancelScan_Click(object sender, RoutedEventArgs e)
-    {
-        await discovery.CancelAsync();
-        SetStatus("已取消抖音扫描");
-    }
-
-    private async void BrowseDouyin_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "选择抖音客户端 douyin.exe",
-            Filter = "抖音客户端 (douyin.exe)|douyin.exe",
-            CheckFileExists = true,
-            Multiselect = false
+            DouyinDiscoveryMode.WebOnly => web ? "Chrome / Edge 抖音网页已连接" : "网页未连接",
+            DouyinDiscoveryMode.Manual => desktop ? "桌面客户端已检测" : "请提前打开桌面抖音",
+            _ when desktop && desktopMedia => "自动选择 · 桌面客户端",
+            _ when web => "自动选择 · 抖音网页版",
+            _ => "未找到可用抖音目标"
         };
-        if (dialog.ShowDialog(this) != true)
-        {
-            return;
-        }
+        MediaStateText.Text = desktopMedia ? "GSMTC Play / Pause 已验证" : web ? "浏览器扩展 Play / Pause 已连接" : "播放控制未就绪";
 
-        var validator = new DouyinCandidateValidator(settings.LastValidatedSignatureThumbprint);
-        var candidate = await validator.ValidateAsync(
-            dialog.FileName,
-            DouyinDiscoverySource.SavedPath,
-            isRunning: false,
-            CancellationToken.None);
-        if (candidate is null)
+        if (!league.IsReady) { SetOverall("等待 League 客户端", false); SetIssue("League 问题 · 请启动并登录 League 客户端。", true); }
+        else if (!targetReady)
         {
-            SetStatus("所选文件未通过抖音身份验证");
-            return;
+            SetOverall("部分功能未就绪", false);
+            SetIssue(mode == DouyinDiscoveryMode.WebOnly ? "抖音网页问题 · 请安装扩展并打开唯一的 douyin.com 视频标签页。" : "抖音问题 · 请提前打开视频；桌面端需要唯一 GSMTC 会话。", true);
         }
-
-        await SelectCandidateAsync(candidate);
-        await discovery.RescanAsync(candidate.NormalizedPath);
+        else { SetOverall("赛前准备完成 · 等待进入对局", true); SetIssue("League、抖音和本地倒计时均已准备。进入对局后会自动连接游戏数据。", false); }
     }
 
-    private async void CandidateList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private static bool ReadBrowserReady()
     {
-        if (!initialized || CandidateList.SelectedItem is not DouyinCandidate candidate)
+        var path = Path.Combine(AppSettingsStore.DirectoryPath, "browser-status.json");
+        try
         {
-            return;
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            return root.TryGetProperty("ready", out var ready) && ready.GetBoolean() && root.TryGetProperty("updatedAtUtc", out var updated) && DateTimeOffset.UtcNow - updated.GetDateTimeOffset() < TimeSpan.FromSeconds(10);
         }
-
-        await SelectCandidateAsync(candidate);
+        catch { return false; }
     }
 
-    private async Task SelectCandidateAsync(DouyinCandidate candidate)
+    private async void Retest_Click(object sender, RoutedEventArgs e) { SetOverall("正在重新检测", false); await discovery.RescanAsync(settings.PreferredDouyinPath); await RefreshReadinessAsync(); }
+
+    private async void DouyinTarget_Changed(object sender, SelectionChangedEventArgs e)
     {
-        settings = settings with
-        {
-            PreferredDouyinPath = candidate.NormalizedPath,
-            LastValidatedSignatureThumbprint = candidate.SignatureThumbprint,
-            DiscoveryMode = DouyinDiscoveryMode.Manual
-        };
-        DouyinPathText.Text = candidate.NormalizedPath;
-        DiscoveryModeCombo.SelectedIndex = 1;
-        await AppSettingsStore.SaveAsync(settings);
-        coordinator?.UpdateSettings(settings);
-        SetStatus("已保存经过验证的抖音客户端路径");
+        if (!initialized || DouyinTargetCombo.SelectedItem is not ComboBoxItem item || !Enum.TryParse<DouyinDiscoveryMode>(item.Tag?.ToString(), out var mode)) return;
+        settings = settings with { DiscoveryMode = mode, OpenWebFallback = mode == DouyinDiscoveryMode.WebOnly };
+        await AppSettingsStore.SaveAsync(settings); coordinator?.UpdateSettings(settings); await RefreshReadinessAsync();
     }
 
-    private async void SettingToggle_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!initialized)
-        {
-            return;
-        }
-
-        settings = settings with
-        {
-            AutoDetectDouyin = AutoDetectToggle.IsChecked == true,
-            OpenWebFallback = WebFallbackToggle.IsChecked == true
-        };
-        await AppSettingsStore.SaveAsync(settings);
-        coordinator?.UpdateSettings(settings);
-    }
-
-    private async void DiscoveryMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!initialized || DiscoveryModeCombo.SelectedItem is not ComboBoxItem item ||
-            !Enum.TryParse<DouyinDiscoveryMode>(item.Tag?.ToString(), out var mode))
-        {
-            return;
-        }
-
-        settings = settings with { DiscoveryMode = mode };
-        await AppSettingsStore.SaveAsync(settings);
-        coordinator?.UpdateSettings(settings);
-        if (mode == DouyinDiscoveryMode.WebOnly)
-        {
-            await discovery.CancelAsync();
-            SetStatus("已切换为仅使用抖音网页版");
-        }
-    }
-
-    private Task SaveSettingsAsync()
-    {
-        settings = settings with
-        {
-            AutoDetectDouyin = AutoDetectToggle.IsChecked == true,
-            OpenWebFallback = WebFallbackToggle.IsChecked == true
-        };
-        coordinator?.UpdateSettings(settings);
-        return AppSettingsStore.SaveAsync(settings);
-    }
-
-    private void Discovery_Changed(object? sender, DouyinDiscoveryResult result) =>
-        Dispatcher.InvokeAsync(() => UpdateDiscoveryUi(result));
-
-    private void UpdateDiscoveryUi(DouyinDiscoveryResult result)
-    {
-        DiscoveryProgressBar.IsIndeterminate = result.Status == DouyinDiscoveryStatus.Scanning;
-        DiscoveryProgressBar.Value = result.Status == DouyinDiscoveryStatus.Found ? 100 : 0;
-        CancelScanButton.IsEnabled = result.Status == DouyinDiscoveryStatus.Scanning;
-        CandidateList.ItemsSource = result.Candidates;
-        var progress = result.Progress;
-        DiscoveryProgressText.Text = result.Status == DouyinDiscoveryStatus.Scanning
-            ? $"{progress.CurrentDrive ?? "本机"} · 已检查 {progress.DirectoriesScanned:N0} 个文件夹 · 找到 {progress.CandidatesFound} 个候选"
-            : $"已检查 {progress.DirectoriesScanned:N0} 个文件夹 · 跳过 {progress.DirectoriesSkipped:N0} 个受保护目录";
-
-        switch (result.Status)
-        {
-            case DouyinDiscoveryStatus.Found when result.Selected is not null:
-                DouyinStateText.Text = "已确认客户端";
-                DouyinPathSummary.Text = result.Selected.NormalizedPath;
-                DouyinPathText.Text = result.Selected.NormalizedPath;
-                _ = PersistDiscoveredCandidateAsync(result.Selected);
-                break;
-            case DouyinDiscoveryStatus.Scanning:
-                DouyinStateText.Text = "正在扫描整台电脑";
-                DouyinPathSummary.Text = progress.CurrentDirectory ?? "先检查快速来源";
-                break;
-            case DouyinDiscoveryStatus.Ambiguous:
-                DouyinStateText.Text = "发现多个同级候选";
-                DouyinPathSummary.Text = "请从列表中手动选择";
-                break;
-            case DouyinDiscoveryStatus.NotFound:
-                DouyinStateText.Text = settings.OpenWebFallback ? "将使用网页版" : "未找到客户端";
-                DouyinPathSummary.Text = "https://www.douyin.com/";
-                break;
-            case DouyinDiscoveryStatus.Cancelled:
-                DouyinStateText.Text = "扫描已取消";
-                DouyinPathSummary.Text = "可随时重新扫描";
-                break;
-            case DouyinDiscoveryStatus.Failed:
-                DouyinStateText.Text = "扫描遇到错误";
-                DouyinPathSummary.Text = "可重试或使用网页版";
-                break;
-            default:
-                DouyinStateText.Text = "等待扫描";
-                DouyinPathSummary.Text = "尚未开始";
-                break;
-        }
-    }
-
-    private async Task PersistDiscoveredCandidateAsync(DouyinCandidate candidate)
-    {
-        if (string.Equals(settings.PreferredDouyinPath, candidate.NormalizedPath, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(settings.LastValidatedSignatureThumbprint, candidate.SignatureThumbprint, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        settings = settings with
-        {
-            PreferredDouyinPath = candidate.NormalizedPath,
-            LastValidatedSignatureThumbprint = candidate.SignatureThumbprint
-        };
-        await AppSettingsStore.SaveAsync(settings);
-        coordinator?.UpdateSettings(settings);
-    }
+    private async void Stop_Click(object sender, RoutedEventArgs e) { if (coordinator is not null) { await coordinator.DisposeAsync(); coordinator = null; } SetOverall("已停止", false); AddEvent("系统 · 已停止监控"); }
 
     private void TestOverlay_Click(object sender, RoutedEventArgs e)
     {
         var area = SystemParameters.WorkArea;
-        var bounds = new PixelRect((int)area.Left, (int)area.Top, (int)area.Right, (int)area.Bottom);
-        var preview = new GameWindowTarget(
-            new WindowIdentity(new NativeWindowHandle(1), Environment.ProcessId, "preview"),
-            bounds,
-            "preview",
-            "preview",
-            IsBorderless: true);
-        overlay.ShowCountdown(preview, 12);
-        SetStatus("正在预览悬浮倒计时");
+        var target = new GameWindowTarget(new(new(1), Environment.ProcessId, "preview"), new((int)area.Left, (int)area.Top, (int)area.Right, (int)area.Bottom), "preview", "preview", true);
+        var sample = new RespawnSwitch.Core.Game.GameSample(0, 0, "preview", true, 12, 12, 0, "preview", RespawnSwitch.Core.Game.SchemaSource.PlayerList, "preview", "阿狸", 8, 3, 11);
+        overlay.BeginCycle(target, sample, RespawnSwitch.Core.Clock.LocalRespawnCountdown.Create(TimeProvider.System, 12));
+        AddEvent("悬浮层 · 正在预览阿狸 8/3/11");
     }
 
-    private void SetStatus(string text)
+    private void SetRuntimeStatus(string text) => Dispatcher.Invoke(() =>
     {
-        Dispatcher.Invoke(() =>
-        {
-            StatusText.Text = text;
-            EventLog.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {text}");
-            while (EventLog.Items.Count > 80)
-            {
-                EventLog.Items.RemoveAt(EventLog.Items.Count - 1);
-            }
+        AddEvent(text);
+        if (text.Contains("已检测到死亡", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前阵亡"; SetOverall("对局监控中 · 当前阵亡", true); }
+        else if (text.Contains("复活", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前存活"; SetOverall("对局监控中", true); }
+        else if (text.Contains("问题", StringComparison.Ordinal) || text.Contains("未连接", StringComparison.Ordinal)) SetIssue(text, true);
+    });
 
-            var warning = text.Contains("未找到", StringComparison.Ordinal) ||
-                          text.Contains("无法", StringComparison.Ordinal) ||
-                          text.Contains("取消", StringComparison.Ordinal);
-            StatusLight.Fill = (System.Windows.Media.Brush)FindResource(warning ? "WarningBrush" : "SuccessBrush");
-            MonitoringStatusPill.Background = new SolidColorBrush(warning
-                ? System.Windows.Media.Color.FromRgb(70, 51, 23)
-                : System.Windows.Media.Color.FromRgb(23, 61, 50));
-        });
-    }
+    private void SetOverall(string text, bool ready) { OverallStatusText.Text = text; OverallStatusLight.Fill = (System.Windows.Media.Brush)FindResource(ready ? "SuccessBrush" : "WarningBrush"); OverallStatusPill.Background = new SolidColorBrush(ready ? System.Windows.Media.Color.FromRgb(20, 54, 47) : System.Windows.Media.Color.FromRgb(44, 40, 30)); }
+    private void SetIssue(string text, bool warning) { IssueText.Text = text; IssuePanel.Background = new SolidColorBrush(warning ? System.Windows.Media.Color.FromRgb(36, 27, 32) : System.Windows.Media.Color.FromRgb(20, 45, 39)); IssuePanel.BorderBrush = new SolidColorBrush(warning ? System.Windows.Media.Color.FromRgb(85, 50, 59) : System.Windows.Media.Color.FromRgb(36, 91, 73)); }
+    private void AddEvent(string text) { EventLog.Items.Insert(0, $"{DateTime.Now:HH:mm:ss}  {text}"); while (EventLog.Items.Count > 60) EventLog.Items.RemoveAt(EventLog.Items.Count - 1); }
 }

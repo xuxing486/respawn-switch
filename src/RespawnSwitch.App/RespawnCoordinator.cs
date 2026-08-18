@@ -11,6 +11,8 @@ using RespawnSwitch.Windows.Media;
 using RespawnSwitch.Windows.DouyinDiscovery;
 using RespawnSwitch.Windows.Windows;
 using System.Net.Http;
+using System.Collections.Concurrent;
+using RespawnSwitch.Core.Game;
 
 namespace RespawnSwitch.App;
 
@@ -19,7 +21,8 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     private readonly RespawnOverlayWindow overlay; private readonly RespawnStateMachine machine; private readonly ILeagueGameProbe probe;
     private readonly ILeagueWindowController league; private readonly IDouyinWindowController douyin; private readonly TimeProvider time; private AppSettings settings; private readonly Action<string> status;
     private readonly DouyinDiscoveryController discovery; private readonly IDouyinWebFallbackLauncher webFallback; private readonly WebFallbackCycleGuard webGuard = new();
-    private readonly HashSet<RespawnCycleId> desktopCycles = [];
+    private readonly ConcurrentDictionary<RespawnCycleId, byte> desktopCycles = new();
+    private readonly RespawnCycleRunner cycleRunner = new();
     private readonly RespawnSwitch.Windows.Identity.IWindowSnapshotSource windowSource; private readonly RespawnSwitch.Windows.Identity.IDouyinProcessIdentityReader identityReader;
     private readonly CancellationTokenSource shutdown = new(); private Task? loop; private GameWindowTarget? game; private IDouyinMediaController? media;
     public RespawnCoordinator(
@@ -56,61 +59,98 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     {
         switch (item)
         {
-            case DeathConfirmed x: game = await league.TryFindAsync(x.Sample.TimelineKey, shutdown.Token); if (game is not null) overlay.Dispatcher.Invoke(() => overlay.ShowCountdown(game, (int)Math.Ceiling(Math.Max(0, x.Sample.RespawnTimerSeconds.GetValueOrDefault())))); status(game is null ? "未找到唯一无边框 League 窗口，已安全跳过" : "已检测到死亡"); break;
+            case DeathConfirmed x:
+                game = await league.TryFindAsync(x.Sample.TimelineKey, shutdown.Token);
+                if (game is not null)
+                {
+                    var seconds = ValidSeconds(x.Sample.RespawnTimerSeconds);
+                    _ = overlay.Dispatcher.BeginInvoke(() => overlay.BeginCycle(game, x.Sample, RespawnSwitch.Core.Clock.LocalRespawnCountdown.Create(time, seconds)));
+                }
+                status(game is null ? "League 窗口未连接：请使用无边框模式" : $"已检测到死亡 · {x.Sample.ChampionName} · {x.Sample.Kills}/{x.Sample.Deaths}/{x.Sample.Assists}");
+                break;
             case AttachmentRequested x when game is not null:
-                overlay.Dispatcher.Invoke(() => overlay.ShowCountdown(game, (int)Math.Ceiling(Math.Max(0, x.Sample.RespawnTimerSeconds.GetValueOrDefault()))));
-                var plan = RespawnDouyinActionPlanner.Plan(
+                var capturedGame = game;
+                cycleRunner.Start(x.CycleId, token => AttachDouyinAsync(x, capturedGame, token));
+                break;
+            case DeadSampleUpdated:
+                break;
+            case RespawnConfirmed x:
+                _ = overlay.Dispatcher.BeginInvoke(overlay.EndCycle);
+                webGuard.Complete(x.CycleId);
+                var capturedLeague = game;
+                _ = CompleteRespawnAsync(x.CycleId, capturedLeague);
+                status("已确认复活 · 正在暂停抖音并返回 League");
+                break;
+        }
+    }
+
+    private async Task AttachDouyinAsync(AttachmentRequested x, GameWindowTarget capturedGame, CancellationToken token)
+    {
+        try
+        {
+            var plan = RespawnDouyinActionPlanner.Plan(
                     discovery.CurrentResult,
                     new DouyinRuntimePreferences(settings.DiscoveryMode, settings.OpenWebFallback));
-                if (plan.Mode == DouyinLaunchMode.Web)
+            if (plan.Mode == DouyinLaunchMode.Web)
+            {
+                if (webGuard.TryBegin(x.CycleId))
                 {
-                    if (webGuard.TryBegin(x.CycleId))
-                    {
-                        status(await webFallback.OpenAsync(shutdown.Token)
-                            ? "未找到安全的抖音客户端，已打开抖音网页版"
-                            : "无法打开抖音网页版，倒计时继续显示");
-                    }
-
-                    break;
+                    status(await webFallback.OpenAsync(token)
+                        ? "抖音网页版已打开 · 浏览器扩展连接待确认"
+                        : "抖音网页问题：无法打开网页");
                 }
+                return;
+            }
 
-                if (plan.Mode == DouyinLaunchMode.Unavailable || plan.DesktopCandidate is null)
-                {
-                    status("未找到安全的抖音客户端，网页回退已关闭");
-                    break;
-                }
+            if (plan.Mode == DouyinLaunchMode.Unavailable || plan.DesktopCandidate is null)
+            {
+                status("抖音问题：请提前打开桌面客户端或抖音网页");
+                return;
+            }
 
-                var douyinPath = plan.DesktopCandidate.NormalizedPath;
+            var douyinPath = plan.DesktopCandidate.NormalizedPath;
                 settings = settings with
                 {
                     PreferredDouyinPath = douyinPath,
                     LastValidatedSignatureThumbprint = plan.DesktopCandidate.SignatureThumbprint
                 };
                 await AppSettingsStore.SaveAsync(settings);
-                var windowClass = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(1));
-                if (windowClass is null) { _ = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, game, game.Bounds, douyinPath, "", true), shutdown.Token); windowClass = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(5)); }
-                if (windowClass is null) { status("未找到唯一抖音窗口，已安全跳过"); break; }
+                var windowClass = await FindWindowClassAsync(douyinPath, TimeSpan.FromSeconds(2), token);
+                if (windowClass is null) { status("抖音桌面问题：请提前打开唯一的抖音主窗口"); return; }
                 settings = settings with { DouyinWindowClass = windowClass }; await AppSettingsStore.SaveAsync(settings);
-                var attached = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, game, game.Bounds, douyinPath, windowClass, false), shutdown.Token);
-                if (!attached.PostconditionVerified) { status("抖音窗口未唯一确认，倒计时继续显示"); break; }
-                desktopCycles.Add(x.CycleId);
-                var candidates = await FindMediaAsync(TimeSpan.FromSeconds(4));
-                if (candidates is null) { status("未找到唯一抖音媒体会话，倒计时继续显示"); break; }
+                var attached = await douyin.AttachAsync(new WindowAttachRequest(x.CycleId, capturedGame, capturedGame.Bounds, douyinPath, windowClass, false), token);
+                if (!attached.PostconditionVerified) { status($"抖音窗口问题：{attached.FailureCode}"); return; }
+                desktopCycles[x.CycleId] = 0;
+                var candidates = await FindMediaAsync(TimeSpan.FromSeconds(4), token);
+                if (candidates is null) { status("抖音媒体问题：请先打开并播放一次视频"); return; }
                 settings = settings with { SourceAppUserModelId = candidates.SourceAppUserModelId, DiagnosticFingerprint = candidates.DiagnosticFingerprint }; await AppSettingsStore.SaveAsync(settings);
                 media = new GsmtcDouyinMediaController(new GsmtcMediaProfile(candidates.SourceAppUserModelId, candidates.DiagnosticFingerprint));
-                status((await media.PlayAsync(shutdown.Token)).StateVerified ? "抖音已启动并显示倒计时" : "抖音播放未确认，倒计时继续显示"); break;
-            case DeadSampleUpdated x when game is not null: overlay.Dispatcher.Invoke(() => overlay.ShowCountdown(game, (int)Math.Ceiling(Math.Max(0, x.Sample.RespawnTimerSeconds.GetValueOrDefault())))); break;
-            case RespawnConfirmed x:
-                if (desktopCycles.Remove(x.CycleId))
-                {
-                    if (media is not null) _ = await media.PauseAsync(shutdown.Token);
-                    _ = await douyin.RestoreAsync(x.CycleId, shutdown.Token);
-                }
-                overlay.Dispatcher.Invoke(overlay.Hide); webGuard.Complete(x.CycleId);
-                if (game is not null) _ = await league.TryRestoreFocusOnceAsync(game, shutdown.Token); status("已复活，已恢复 League"); break;
+                var result = await media.PlayAsync(token);
+                status(result.StateVerified ? "抖音已连接 · 正在播放" : $"抖音媒体问题：{result.FailureCode}");
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception ex) { status($"抖音连接问题：{ex.GetType().Name}"); }
     }
-    private async Task<string?> FindWindowClassAsync(string douyinPath, TimeSpan timeout)
+
+    private async Task CompleteRespawnAsync(RespawnCycleId cycleId, GameWindowTarget? capturedLeague)
+    {
+        try
+        {
+            await cycleRunner.CancelAsync(cycleId, TimeSpan.FromMilliseconds(750));
+            if (desktopCycles.TryRemove(cycleId, out _))
+            {
+                if (media is not null) _ = await media.PauseAsync(shutdown.Token);
+                _ = await douyin.RestoreAsync(cycleId, shutdown.Token);
+            }
+            if (capturedLeague is not null) _ = await league.TryRestoreFocusOnceAsync(capturedLeague, shutdown.Token);
+            status("已复活 · League 已恢复");
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private static double ValidSeconds(double? value) => value is { } seconds && double.IsFinite(seconds) && seconds >= 0 ? seconds : 0;
+
+    private async Task<string?> FindWindowClassAsync(string douyinPath, TimeSpan timeout, CancellationToken token)
     {
         var until = DateTime.UtcNow + timeout;
         do
@@ -118,18 +158,18 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             var candidates = new List<DouyinWindowCandidate>();
             foreach (var w in windowSource.EnumerateTopLevelWindows())
             {
-                var process = await identityReader.TryReadAsync(w.Identity.ProcessId, shutdown.Token);
+                var process = await identityReader.TryReadAsync(w.Identity.ProcessId, token);
                 if (process is not null) candidates.Add(new(process.NormalizedExecutablePath, w.Identity.WindowClass, w.IsVisible, w.IsTopLevel, w.IsToolWindow, w.Identity.Handle));
             }
             var result = DouyinWindowCalibration.SelectUniqueDouyinWindowClass(candidates, douyinPath);
             if (result is not null) return result;
-            await Task.Delay(250, shutdown.Token);
+            await Task.Delay(250, token);
         } while (DateTime.UtcNow < until); return null;
     }
-    private async Task<DouyinMediaDiscovery?> FindMediaAsync(TimeSpan timeout)
+    private async Task<DouyinMediaDiscovery?> FindMediaAsync(TimeSpan timeout, CancellationToken token)
     {
         var until = DateTime.UtcNow + timeout;
-        do { var matches = await DouyinGsmTcDiscovery.DiscoverAsync(shutdown.Token); if (matches.Count == 1) return matches[0]; await Task.Delay(250, shutdown.Token); } while (DateTime.UtcNow < until); return null;
+        do { var matches = await DouyinGsmTcDiscovery.DiscoverAsync(token); if (matches.Count == 1) return matches[0]; await Task.Delay(250, token); } while (DateTime.UtcNow < until); return null;
     }
-    public async ValueTask DisposeAsync() { await StopAsync(); shutdown.Dispose(); }
+    public async ValueTask DisposeAsync() { await StopAsync(); await cycleRunner.DisposeAsync(); shutdown.Dispose(); }
 }

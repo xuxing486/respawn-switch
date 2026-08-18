@@ -68,10 +68,11 @@ internal static class PlayerListParser
         var validRiotId = RiotJson.TryGetString(player, "riotId", schema, path, errors, out var riotId);
         var validDead = TryGetBoolean(player, schema, path, errors, out var isDead);
         var validTimer = RiotJson.TryGetFiniteDouble(player, "respawnTimer", schema, path, errors, out var respawnTimer);
-        var validDeaths = TryGetDeaths(player, schema, path, errors, out var deaths);
+        var validChampion = RiotJson.TryGetString(player, "championName", schema, path, errors, out var championName);
+        var validScores = TryGetScores(player, schema, path, errors, out var kills, out var deaths, out var assists);
 
-        return validRiotId && validDead && validTimer && validDeaths
-            ? new RiotPlayerSnapshot(riotId!, isDead, respawnTimer, deaths)
+        return validRiotId && validDead && validTimer && validChampion && validScores
+            ? new RiotPlayerSnapshot(riotId!, isDead, respawnTimer, deaths, championName!, kills, assists)
             : null;
     }
 
@@ -93,9 +94,9 @@ internal static class PlayerListParser
         return true;
     }
 
-    private static bool TryGetDeaths(JsonElement player, string schema, string path, List<RiotJsonError> errors, out int value)
+    private static bool TryGetScores(JsonElement player, string schema, string path, List<RiotJsonError> errors, out int kills, out int deathsValue, out int assists)
     {
-        value = default;
+        kills = deathsValue = assists = default;
         if (!RiotJson.TryGetRequiredProperty(player, "scores", schema, $"{path}.scores", errors, out var scores))
         {
             return false;
@@ -107,17 +108,25 @@ internal static class PlayerListParser
             return false;
         }
 
-        if (!RiotJson.TryGetRequiredProperty(scores, "deaths", schema, $"{path}.scores.deaths", errors, out var deaths))
+        if (!TryScore(scores, "deaths", schema, path, errors, required: true, out deathsValue))
         {
             return false;
         }
 
-        if (deaths.ValueKind != JsonValueKind.Number || !deaths.TryGetInt32(out value))
-        {
-            errors.Add(new RiotJsonError($"riot.schema.{schema}.deaths-invalid-type", $"{path}.scores.deaths", "Expected a 32-bit JSON integer."));
-            return false;
-        }
+        return TryScore(scores, "kills", schema, path, errors, required: false, out kills) &
+               TryScore(scores, "assists", schema, path, errors, required: false, out assists);
+    }
 
-        return true;
+    private static bool TryScore(JsonElement scores, string name, string schema, string path, List<RiotJsonError> errors, bool required, out int value)
+    {
+        value = 0;
+        if (!scores.TryGetProperty(name, out var property))
+        {
+            if (required) errors.Add(new RiotJsonError($"riot.schema.{schema}.{name}-missing", $"{path}.scores.{name}", $"Required property '{name}' is missing."));
+            return !required;
+        }
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out value)) return true;
+        errors.Add(new RiotJsonError($"riot.schema.{schema}.{name}-invalid-type", $"{path}.scores.{name}", "Expected a 32-bit JSON integer."));
+        return false;
     }
 }

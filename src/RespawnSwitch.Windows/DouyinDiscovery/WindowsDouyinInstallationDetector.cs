@@ -28,6 +28,7 @@ public sealed class WindowsDouyinInstallationDetector(
         IProgress<DouyinScanProgress>? progress,
         CancellationToken cancellationToken)
     {
+        _ = fullDiskScanner; // Retained for binary/test constructor compatibility; full scans are intentionally disabled.
         var latestProgress = DouyinScanProgress.Empty;
         var forwardingProgress = new Progress<DouyinScanProgress>(value =>
         {
@@ -57,8 +58,8 @@ public sealed class WindowsDouyinInstallationDetector(
                 return quickResult with { Progress = latestProgress };
             }
 
-            var diskCandidates = await fullDiskScanner.ScanAsync(forwardingProgress, cancellationToken).ConfigureAwait(false);
-            return DouyinCandidateSelector.Select(quickCandidates.Concat(diskCandidates)) with { Progress = latestProgress };
+            // Users pre-open Douyin. Never turn readiness detection into an unbounded disk scan.
+            return quickResult with { Progress = latestProgress };
         }
         catch (OperationCanceledException)
         {

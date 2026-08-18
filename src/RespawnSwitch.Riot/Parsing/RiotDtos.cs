@@ -16,7 +16,10 @@ internal sealed record RiotPlayerSnapshot(
     string RiotId,
     bool IsDead,
     double? RespawnTimerRaw,
-    int? Deaths);
+    int? Deaths,
+    string ChampionName = "Unknown",
+    int Kills = 0,
+    int Assists = 0);
 
 internal sealed record RiotGameStatsSnapshot(
     double GameTimeSeconds,
@@ -168,6 +171,10 @@ internal static class RiotSampleAssembler
             stats.GameTimeSeconds,
             stats.GameMode,
             source,
-            timelineKey);
+            timelineKey,
+            player.ChampionName,
+            player.Kills,
+            player.Deaths.GetValueOrDefault(),
+            player.Assists);
     }
 }

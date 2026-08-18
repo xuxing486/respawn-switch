@@ -14,6 +14,8 @@ public sealed class PlayerListParserTests
         Assert.True(result.Value.IsDead);
         Assert.Equal(18.75, result.Value.RespawnTimerRaw);
         Assert.Equal(1, result.Value.Deaths);
+        Assert.Equal("Annie", result.Value.ChampionName);
+        Assert.Equal((4, 1, 7), (result.Value.Kills, result.Value.Deaths, result.Value.Assists));
     }
 
     [Fact]

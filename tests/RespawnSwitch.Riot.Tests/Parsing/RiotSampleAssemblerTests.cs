@@ -31,4 +31,16 @@ public sealed class RiotSampleAssemblerTests
         Assert.Equal(37.5, sample.RespawnTimerSeconds);
         Assert.Equal(SchemaSource.AllGameData, sample.SchemaSource);
     }
+
+    [Fact]
+    public void Assemble_CarriesChampionAndKdaIntoGameSample()
+    {
+        var sample = RiotSampleAssembler.Assemble(
+            12, 34, new RiotPlayerSnapshot("Player#NA1", true, 18.75, 3, "Ahri", 8, 11),
+            new RiotGameStatsSnapshot(123.5, "CLASSIC"), SchemaSource.PlayerList, "match-1",
+            new RespawnTimerSemantics(TimerSemanticStatus.VerifiedForCurrentPatch, "14.1", 1, "probe-1"));
+
+        Assert.Equal("Ahri", sample.ChampionName);
+        Assert.Equal((8, 3, 11), (sample.Kills, sample.Deaths, sample.Assists));
+    }
 }

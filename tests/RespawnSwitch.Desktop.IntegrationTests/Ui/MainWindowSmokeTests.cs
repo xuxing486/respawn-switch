@@ -7,7 +7,7 @@ namespace RespawnSwitch.Desktop.IntegrationTests.Ui;
 public sealed class MainWindowSmokeTests
 {
     [Fact]
-    public void MainWindow_ContainsDiscoverySettingsStatusAndLogControls()
+    public void MainWindow_ContainsCompactPrematchReadinessAndDiagnostics()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -25,16 +25,17 @@ public sealed class MainWindowSmokeTests
                 var window = new MainWindow();
                 foreach (var name in new[]
                 {
-                    "MonitoringStatusPill", "LeagueStatusCard", "DouyinStatusCard", "MediaStatusCard",
-                    "AutoDetectToggle", "WebFallbackToggle", "DiscoveryProgressBar", "CandidateList",
-                    "RescanButton", "CancelScanButton", "EventLog"
+                    "OverallStatusText", "LeagueStatusCard", "LeagueClientStateText", "LeagueGameDataStateText",
+                    "DouyinStatusCard", "DouyinTargetCombo", "DouyinStateText", "MediaStateText",
+                    "AutomationStatusCard", "AutomationStateText", "IssuePanel", "IssueText",
+                    "RetestButton", "TestOverlayButton", "EventLog"
                 })
                 {
                     Assert.NotNull(window.FindName(name));
                 }
 
-                Assert.IsType<ProgressBar>(window.FindName("DiscoveryProgressBar"));
-                Assert.IsType<ListBox>(window.FindName("CandidateList"));
+                Assert.IsType<ComboBox>(window.FindName("DouyinTargetCombo"));
+                Assert.IsType<ListBox>(window.FindName("EventLog"));
             }
             catch (Exception exception)
             {

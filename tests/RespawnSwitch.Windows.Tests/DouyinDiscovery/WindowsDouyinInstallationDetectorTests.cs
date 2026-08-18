@@ -20,24 +20,24 @@ public sealed class WindowsDouyinInstallationDetectorTests
     }
 
     [Fact]
-    public async Task DetectAsync_NoQuickCandidate_ScansAllFixedRootsThroughFullScanner()
+    public async Task DetectAsync_NoRunningCandidate_DoesNotScanFixedDisks()
     {
         var full = new FakeFullScanner([Candidate(@"E:\Unexpected\Nested\douyin.exe", DouyinDiscoverySource.FullDisk, false)]);
         var detector = new WindowsDouyinInstallationDetector(new FakeQuickSource([]), full);
 
         var result = await detector.DetectAsync(null, null, CancellationToken.None);
 
-        Assert.Equal(DouyinDiscoveryStatus.Found, result.Status);
-        Assert.Equal(@"E:\Unexpected\Nested\douyin.exe", result.Selected?.NormalizedPath);
-        Assert.Equal(1, full.CallCount);
+        Assert.Equal(DouyinDiscoveryStatus.NotFound, result.Status);
+        Assert.Null(result.Selected);
+        Assert.Equal(0, full.CallCount);
     }
 
     [Fact]
-    public async Task DetectAsync_CancelledFullScan_ReturnsCancelledNotNotFound()
+    public async Task DetectAsync_CancelledQuickDetection_ReturnsCancelledNotNotFound()
     {
         var detector = new WindowsDouyinInstallationDetector(
-            new FakeQuickSource([]),
-            new FakeFullScanner([], cancel: true));
+            new CancellingQuickSource(),
+            new FakeFullScanner([]));
 
         var result = await detector.DetectAsync(null, null, CancellationToken.None);
 
@@ -59,15 +59,15 @@ public sealed class WindowsDouyinInstallationDetectorTests
     }
 
     [Fact]
-    public async Task DetectAsync_QuickSourceFails_StillRunsFullDiskScan()
+    public async Task DetectAsync_QuickSourceFails_DoesNotFallBackToDiskScan()
     {
         var full = new FakeFullScanner([Candidate(@"F:\Portable\douyin.exe", DouyinDiscoverySource.FullDisk, false)]);
         var detector = new WindowsDouyinInstallationDetector(new ThrowingQuickSource(), full);
 
         var result = await detector.DetectAsync(null, null, CancellationToken.None);
 
-        Assert.Equal(DouyinDiscoveryStatus.Found, result.Status);
-        Assert.Equal(1, full.CallCount);
+        Assert.Equal(DouyinDiscoveryStatus.NotFound, result.Status);
+        Assert.Equal(0, full.CallCount);
     }
 
     private static DouyinCandidate Candidate(string path, DouyinDiscoverySource source, bool running) =>
@@ -83,6 +83,12 @@ public sealed class WindowsDouyinInstallationDetectorTests
     {
         public Task<IReadOnlyList<DouyinCandidate>> FindAsync(string? savedPath, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("quick source unavailable");
+    }
+
+    private sealed class CancellingQuickSource : IDouyinQuickCandidateSource
+    {
+        public Task<IReadOnlyList<DouyinCandidate>> FindAsync(string? savedPath, CancellationToken cancellationToken) =>
+            throw new OperationCanceledException(cancellationToken);
     }
 
     private sealed class FakeFullScanner(IReadOnlyList<DouyinCandidate> candidates, bool cancel = false) : IDouyinFullDiskScanner

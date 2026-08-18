@@ -16,4 +16,8 @@ public sealed record GameSample(
     double GameTimeSeconds,
     string GameMode,
     SchemaSource SchemaSource,
-    string TimelineKey);
+    string TimelineKey,
+    string ChampionName = "Unknown",
+    int Kills = 0,
+    int Deaths = 0,
+    int Assists = 0);

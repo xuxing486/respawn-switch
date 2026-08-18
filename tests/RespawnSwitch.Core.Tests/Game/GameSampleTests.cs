@@ -23,4 +23,15 @@ public sealed class GameSampleTests
         Assert.Null(sample.RespawnTimerSeconds);
         Assert.True(sample.IsDead);
     }
+
+    [Fact]
+    public void Constructor_PreservesChampionAndKdaForOverlay()
+    {
+        var sample = new GameSample(
+            8, 20_000, "Player#NA1", true, 12.2, 12.2, 800, "CLASSIC",
+            SchemaSource.PlayerList, "timeline", "Ahri", 7, 3, 9);
+
+        Assert.Equal("Ahri", sample.ChampionName);
+        Assert.Equal((7, 3, 9), (sample.Kills, sample.Deaths, sample.Assists));
+    }
 }

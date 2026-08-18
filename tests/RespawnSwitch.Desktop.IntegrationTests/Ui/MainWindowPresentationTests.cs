@@ -1,6 +1,7 @@
 // Author: Stress Monster
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 using RespawnSwitch.App;
@@ -33,7 +34,13 @@ public sealed class MainWindowPresentationTests
                 var target = Assert.IsType<ComboBox>(window.FindName("DouyinTargetCombo"));
                 var choices = target.Items.Cast<ComboBoxItem>().Select(x => x.Content?.ToString()).ToArray();
                 Assert.Equal(["自动选择", "抖音客户端", "抖音网页"], choices);
-                Assert.Equal(Color.FromRgb(0x24, 0x21, 0x38), Assert.IsType<SolidColorBrush>(target.Background).Color);
+                var expectedSurface = Color.FromRgb(0x24, 0x21, 0x38);
+                Assert.Equal(expectedSurface, Assert.IsType<SolidColorBrush>(target.Background).Color);
+                target.ApplyTemplate();
+                var toggle = Assert.IsType<ToggleButton>(target.Template.FindName("DropDownToggle", target));
+                toggle.ApplyTemplate();
+                var surface = Assert.IsType<Border>(toggle.Template.FindName("ComboSurface", toggle));
+                Assert.Equal(expectedSurface, Assert.IsType<SolidColorBrush>(surface.Background).Color);
                 Assert.NotNull(Assert.IsType<Image>(window.FindName("CatgirlMascotImage")).Source);
             }
             catch (Exception exception) { failure = exception; }

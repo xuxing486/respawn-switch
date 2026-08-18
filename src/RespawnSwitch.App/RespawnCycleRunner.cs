@@ -14,17 +14,20 @@ public sealed class RespawnCycleRunner : IAsyncDisposable
     public void Start(RespawnCycleId cycleId, Func<CancellationToken, Task> work)
     {
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token);
-        var task = Task.Run(async () =>
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!active.TryAdd(cycleId, new(cancellation, finished.Task))) { cancellation.Dispose(); return; }
+        _ = Task.Run(async () =>
         {
             try { await work(cancellation.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+            catch (Exception ex) { finished.TrySetException(ex); }
             finally
             {
                 active.TryRemove(cycleId, out _);
                 cancellation.Dispose();
+                finished.TrySetResult();
             }
         }, CancellationToken.None);
-        if (!active.TryAdd(cycleId, new(cancellation, task))) cancellation.Cancel();
     }
 
     public async Task CancelAsync(RespawnCycleId cycleId, TimeSpan timeout)

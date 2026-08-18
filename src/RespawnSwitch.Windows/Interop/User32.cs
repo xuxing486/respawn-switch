@@ -79,6 +79,9 @@ internal static class User32
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetForegroundWindow(nint hWnd);
 
+    [DllImport("user32.dll")]
+    internal static extern nint GetForegroundWindow();
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool RegisterHotKey(nint hWnd, int id, uint modifiers, uint virtualKey);

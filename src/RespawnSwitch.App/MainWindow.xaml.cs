@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using RespawnSwitch.App.Overlay;
+using RespawnSwitch.App.Browser;
 using RespawnSwitch.Application.Douyin;
 using RespawnSwitch.Application.Windows;
 using RespawnSwitch.Windows.DouyinDiscovery;
@@ -20,6 +21,8 @@ public partial class MainWindow : Window
     private readonly DouyinDiscoveryController discovery = new(new WindowsDouyinInstallationDetector());
     private readonly LeagueClientPresenceProbe leagueClient = new(new NativeWindowSnapshotSource(), new ToolhelpProcessSnapshot());
     private readonly DispatcherTimer readinessTimer;
+    private readonly BrowserBridgeState browserState = new();
+    private BrowserBridgeServer? browserServer;
     private RespawnCoordinator? coordinator;
     private AppSettings settings = AppSettings.Default;
     private bool initialized;
@@ -38,6 +41,9 @@ public partial class MainWindow : Window
         settings = await AppSettingsStore.LoadAsync();
         DouyinTargetCombo.SelectedIndex = settings.DiscoveryMode switch { DouyinDiscoveryMode.Manual => 1, DouyinDiscoveryMode.WebOnly => 2, _ => 0 };
         initialized = true;
+        browserServer = new BrowserBridgeServer(browserState, Path.Combine(AppSettingsStore.DirectoryPath, "browser-status.json"));
+        try { browserServer.Start(); }
+        catch (Exception ex) { SetIssue($"浏览器连接问题 · 本地桥接启动失败：{ex.GetType().Name}", true); }
         await discovery.StartAsync(settings.PreferredDouyinPath);
         StartMonitoring();
         readinessTimer.Start();
@@ -49,12 +55,13 @@ public partial class MainWindow : Window
         readinessTimer.Stop();
         if (coordinator is not null) await coordinator.DisposeAsync();
         await discovery.DisposeAsync();
+        if (browserServer is not null) await browserServer.DisposeAsync();
         overlay.EndCycle();
     }
 
     private void StartMonitoring()
     {
-        coordinator ??= new RespawnCoordinator(overlay, settings, SetRuntimeStatus, discovery);
+        coordinator ??= new RespawnCoordinator(overlay, settings, SetRuntimeStatus, discovery, browserState: browserState);
         coordinator.Start();
         AddEvent("League · 正在等待对局数据");
     }
@@ -108,7 +115,7 @@ public partial class MainWindow : Window
     private async void DouyinTarget_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (!initialized || DouyinTargetCombo.SelectedItem is not ComboBoxItem item || !Enum.TryParse<DouyinDiscoveryMode>(item.Tag?.ToString(), out var mode)) return;
-        settings = settings with { DiscoveryMode = mode, OpenWebFallback = mode == DouyinDiscoveryMode.WebOnly };
+        settings = settings with { DiscoveryMode = mode, OpenWebFallback = mode != DouyinDiscoveryMode.Manual };
         await AppSettingsStore.SaveAsync(settings); coordinator?.UpdateSettings(settings); await RefreshReadinessAsync();
     }
 

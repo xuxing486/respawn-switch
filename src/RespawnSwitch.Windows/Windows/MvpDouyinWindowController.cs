@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using RespawnSwitch.Application.Windows;
 using RespawnSwitch.Core.Respawn;
 using RespawnSwitch.Windows.Identity;
@@ -14,19 +13,14 @@ public sealed class MvpDouyinWindowController(IWindowSnapshotSource windows, Dou
     public async ValueTask<WindowOperationResult> AttachAsync(WindowAttachRequest request, CancellationToken cancellationToken)
     {
         var target = await locator.TryFindAsync(request.CalibratedExecutablePath, request.CalibratedWindowClass, cancellationToken);
-        if (target is null && request.AllowLaunch && string.Equals(DouyinProcessIdentityReader.NormalizePath(request.CalibratedExecutablePath), "d:\\douyin\\douyin.exe", StringComparison.OrdinalIgnoreCase))
-        {
-            _ = Process.Start(new ProcessStartInfo(request.CalibratedExecutablePath) { UseShellExecute = true });
-            return new WindowOperationResult(true, false, null, "launching");
-        }
         if (target is null) return new WindowOperationResult(false, false, null, "not-found");
 
         var snapshot = windows.TryGetWindow(target.Identity.Handle);
         if (snapshot is null) return new WindowOperationResult(false, false, target.Identity.Handle, "window-gone");
         saved[request.CycleId] = new SavedWindow(target.Identity.Handle, snapshot.ExtendedFrameBounds, snapshot.IsVisible, snapshot.Style);
         var bounds = DouyinWindowPlacement.PlaceOnRight(request.TargetWorkArea, snapshot.ExtendedFrameBounds);
-        var ok = User32.ShowWindowAsync(target.Identity.Handle.Value, User32.SwShownoactivate) &&
-                 User32.SetWindowPos(target.Identity.Handle.Value, User32.HwndNoTopmost, bounds.Left, bounds.Top, bounds.Width, bounds.Height, User32.SwpNoActivate | User32.SwpShowWindow);
+        _ = User32.ShowWindowAsync(target.Identity.Handle.Value, User32.SwShownoactivate);
+        var ok = User32.SetWindowPos(target.Identity.Handle.Value, User32.HwndTopmost, bounds.Left, bounds.Top, bounds.Width, bounds.Height, User32.SwpNoActivate | User32.SwpShowWindow);
         return new WindowOperationResult(ok, ok, target.Identity.Handle, ok ? "" : "move-failed");
     }
 

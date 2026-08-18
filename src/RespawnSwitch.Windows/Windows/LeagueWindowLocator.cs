@@ -28,8 +28,12 @@ public sealed class LeagueWindowLocator(IWindowSnapshotSource windows, IToolhelp
     public ValueTask<bool> TryRestoreFocusOnceAsync(GameWindowTarget target, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (target.Identity.Handle.IsNull) return ValueTask.FromResult(false);
         var handle = target.Identity.Handle.Value;
-        return ValueTask.FromResult(!target.Identity.Handle.IsNull && User32.ShowWindowAsync(handle, User32.SwShownoactivate) && User32.SetForegroundWindow(handle));
+        if (User32.GetForegroundWindow() == handle) return ValueTask.FromResult(true);
+        _ = User32.ShowWindowAsync(handle, User32.SwShownoactivate);
+        var requested = User32.SetForegroundWindow(handle);
+        return ValueTask.FromResult(requested && User32.GetForegroundWindow() == handle);
     }
     public ValueTask FlashTaskbarAsync(GameWindowTarget target, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 

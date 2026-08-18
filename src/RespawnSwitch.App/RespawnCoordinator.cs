@@ -13,6 +13,7 @@ using RespawnSwitch.Windows.Windows;
 using System.Net.Http;
 using System.Collections.Concurrent;
 using RespawnSwitch.Core.Game;
+using RespawnSwitch.App.Browser;
 
 namespace RespawnSwitch.App;
 
@@ -22,7 +23,9 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     private readonly ILeagueWindowController league; private readonly IDouyinWindowController douyin; private readonly TimeProvider time; private AppSettings settings; private readonly Action<string> status;
     private readonly DouyinDiscoveryController discovery; private readonly IDouyinWebFallbackLauncher webFallback; private readonly WebFallbackCycleGuard webGuard = new();
     private readonly ConcurrentDictionary<RespawnCycleId, byte> desktopCycles = new();
+    private readonly ConcurrentDictionary<RespawnCycleId, byte> webCycles = new();
     private readonly RespawnCycleRunner cycleRunner = new();
+    private readonly BrowserBridgeState? browserState;
     private readonly RespawnSwitch.Windows.Identity.IWindowSnapshotSource windowSource; private readonly RespawnSwitch.Windows.Identity.IDouyinProcessIdentityReader identityReader;
     private readonly CancellationTokenSource shutdown = new(); private Task? loop; private GameWindowTarget? game; private IDouyinMediaController? media;
     public RespawnCoordinator(
@@ -30,10 +33,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
         AppSettings settings,
         Action<string> status,
         DouyinDiscoveryController discovery,
-        IDouyinWebFallbackLauncher? webFallback = null)
+        IDouyinWebFallbackLauncher? webFallback = null,
+        BrowserBridgeState? browserState = null)
     {
         this.overlay = overlay; this.settings = settings; this.status = status; this.discovery = discovery;
-        this.webFallback = webFallback ?? new DouyinWebFallbackLauncher(); time = TimeProvider.System;
+        this.webFallback = webFallback ?? new DouyinWebFallbackLauncher(); this.browserState = browserState; time = TimeProvider.System;
         var client = new HttpClient(RiotHttpClientFactory.CreateHandler(new RiotTlsCertificateValidator())) { BaseAddress = RiotEndpoint.Origin };
         var api = new RiotLiveClientApi(client, new RiotRequestTimeouts(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
         probe = new LeagueGameProbe(api, new RespawnTimerSemantics(TimerSemanticStatus.VerifiedForCurrentPatch, "mvp", 1.0, "mvp-seconds"), new LeaguePollingSchedule(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5)), time);
@@ -93,12 +97,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                     new DouyinRuntimePreferences(settings.DiscoveryMode, settings.OpenWebFallback));
             if (plan.Mode == DouyinLaunchMode.Web)
             {
-                if (webGuard.TryBegin(x.CycleId))
-                {
-                    status(await webFallback.OpenAsync(token)
-                        ? "抖音网页版已打开 · 浏览器扩展连接待确认"
-                        : "抖音网页问题：无法打开网页");
-                }
+                if (!webGuard.TryBegin(x.CycleId)) return;
+                if (browserState is null) { status("抖音网页问题：本地浏览器桥接未运行"); return; }
+                var webResult = await browserState.IssueAsync("play", TimeSpan.FromSeconds(3), token);
+                if (webResult.Ok) { webCycles[x.CycleId] = 0; status($"抖音网页已连接 · {webResult.Browser} 正在播放"); }
+                else status($"抖音网页问题：{webResult.ErrorCode}");
                 return;
             }
 
@@ -141,6 +144,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             {
                 if (media is not null) _ = await media.PauseAsync(shutdown.Token);
                 _ = await douyin.RestoreAsync(cycleId, shutdown.Token);
+            }
+            if (webCycles.TryRemove(cycleId, out _) && browserState is not null)
+            {
+                var paused = await browserState.IssueAsync("pause", TimeSpan.FromSeconds(2), shutdown.Token);
+                if (!paused.Ok) status($"抖音网页暂停问题：{paused.ErrorCode}");
             }
             if (capturedLeague is not null) _ = await league.TryRestoreFocusOnceAsync(capturedLeague, shutdown.Token);
             status("已复活 · League 已恢复");

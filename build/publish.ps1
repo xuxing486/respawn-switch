@@ -3,7 +3,7 @@ param([switch]$Restore, [string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'src\RespawnSwitch.App\RespawnSwitch.App.csproj'
-$version = '0.2.0'
+$version = '0.3.0'
 $artifacts = Join-Path $root 'artifacts'
 $publish = Join-Path $artifacts "publish\$version-win-x64"
 $archive = Join-Path $root "artifacts\RespawnSwitch-$version-win-x64.zip"
@@ -22,9 +22,17 @@ if ($LASTEXITCODE -ne 0) { throw "Publish failed with exit code $LASTEXITCODE" }
 $exe = Join-Path $publish 'RespawnSwitch.exe'
 if (!(Test-Path $exe)) { throw "Publish output missing: $exe" }
 Get-ChildItem -LiteralPath $publish -Filter '*.pdb' -File | Remove-Item -Force
+$extensionSource = Join-Path $root 'browser-extension'
+$extensionTarget = Join-Path $publish 'browser-extension'
+Copy-Item -LiteralPath $extensionSource -Destination $extensionTarget -Recurse
+$guide = Join-Path $root 'docs\RespawnSwitch-0.3-快速使用.txt'
+Copy-Item -LiteralPath $guide -Destination (Join-Path $publish '快速使用.txt')
 $selfTest = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru -WindowStyle Hidden
 if ($selfTest.ExitCode -ne 0) { throw "Self-test failed with exit code $($selfTest.ExitCode)" }
-$hashes = Get-ChildItem -File $publish | Sort-Object FullName | ForEach-Object { "$( (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() )  $($_.Name)" }
+$hashes = Get-ChildItem -File $publish -Recurse | Sort-Object FullName | ForEach-Object {
+    $relative = [System.IO.Path]::GetRelativePath($publish, $_.FullName).Replace('\', '/')
+    "$( (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() )  $relative"
+}
 $hashes | Set-Content -Encoding ascii (Join-Path $publish 'SHA256SUMS')
 if (Test-Path $archive) { Remove-Item -LiteralPath $archive -Force }
 Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $archive -CompressionLevel Optimal

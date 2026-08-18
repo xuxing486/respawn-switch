@@ -3,7 +3,7 @@ param([switch]$Restore, [string]$Configuration = 'Release')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'src\RespawnSwitch.App\RespawnSwitch.App.csproj'
-$version = '0.3.0'
+$version = '0.3.1'
 $artifacts = Join-Path $root 'artifacts'
 $publish = Join-Path $artifacts "publish\$version-win-x64"
 $archive = Join-Path $root "artifacts\RespawnSwitch-$version-win-x64.zip"
@@ -25,8 +25,8 @@ Get-ChildItem -LiteralPath $publish -Filter '*.pdb' -File | Remove-Item -Force
 $extensionSource = Join-Path $root 'browser-extension'
 $extensionTarget = Join-Path $publish 'browser-extension'
 Copy-Item -LiteralPath $extensionSource -Destination $extensionTarget -Recurse
-$guide = Join-Path $root 'docs\RespawnSwitch-0.3-快速使用.txt'
-Copy-Item -LiteralPath $guide -Destination (Join-Path $publish '快速使用.txt')
+$guide = Join-Path $root 'docs\RespawnSwitch-0.3.1-使用手册.txt'
+Copy-Item -LiteralPath $guide -Destination (Join-Path $publish '使用手册.txt')
 $selfTest = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru -WindowStyle Hidden
 if ($selfTest.ExitCode -ne 0) { throw "Self-test failed with exit code $($selfTest.ExitCode)" }
 $hashes = Get-ChildItem -File $publish -Recurse | Sort-Object FullName | ForEach-Object {

@@ -1,6 +1,11 @@
-# RespawnSwitch 0.3.0
+# RespawnSwitch 0.3.1
 
 RespawnSwitch 是 Windows x64 本地工具：League 英雄阵亡时切换到抖音并显示英雄、K/D/A 和复活倒计时；英雄复活后暂停抖音并恢复游戏。
+
+## 0.3.1
+
+- 修复进入真实对局后主界面仍永久显示“等待进入游戏”的问题：首次成功读取存活样本时立即显示“已连接 · 当前存活”。
+- 对局接口短暂失联时显示“连接不稳定”，恢复后自动回到已连接状态。
 
 ## 0.3.0
 
@@ -14,12 +19,12 @@ RespawnSwitch 是 Windows x64 本地工具：League 英雄阵亡时切换到抖�
 
 ## 使用
 
-1. 从交付包完整解压 `RespawnSwitch-0.3.0-win-x64.zip`，双击 `RespawnSwitch.exe`；无需预装 .NET 或管理员权限。
+1. 从交付包完整解压 `RespawnSwitch-0.3.1-win-x64.zip`，双击 `RespawnSwitch.exe`；无需预装 .NET 或管理员权限。
 2. 启动并登录 League 客户端，将游戏显示模式设为“无边框”。
 3. 桌面模式：提前打开抖音视频；网页模式：按 `browser-extension/README.txt` 安装扩展，并且只保留一个抖音视频标签页。
 4. 主界面显示“赛前准备完成”后进入游戏。首次使用请在训练模式验证完整阵亡/复活周期。
 
-详细步骤见 [`docs/RespawnSwitch-0.3-快速使用.txt`](docs/RespawnSwitch-0.3-快速使用.txt)。
+详细步骤见 [`docs/RespawnSwitch-0.3.1-使用手册.txt`](docs/RespawnSwitch-0.3.1-使用手册.txt)。
 
 ## 安全边界
 

@@ -1,6 +1,11 @@
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Reflection;
 using RespawnSwitch.App;
+using RespawnSwitch.App.Overlay;
+using RespawnSwitch.Core.Game;
+using RespawnSwitch.Core.Respawn;
+using RespawnSwitch.Windows.DouyinDiscovery;
 
 namespace RespawnSwitch.Desktop.IntegrationTests.Ui;
 
@@ -36,6 +41,28 @@ public sealed class MainWindowSmokeTests
 
                 Assert.IsType<ComboBox>(window.FindName("DouyinTargetCombo"));
                 Assert.IsType<ListBox>(window.FindName("EventLog"));
+
+                var setStatus = typeof(MainWindow).GetMethod("SetRuntimeStatus", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var discovery = new DouyinDiscoveryController(new WindowsDouyinInstallationDetector());
+                var coordinator = new RespawnCoordinator(
+                    new RespawnOverlayWindow(),
+                    AppSettings.Default,
+                    text => setStatus.Invoke(window, [text]),
+                    discovery);
+                var handle = typeof(RespawnCoordinator).GetMethod("HandleAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var handled = (Task)handle.Invoke(coordinator, [new LifeStateSynchronized(LifeState.Alive, 1L)])!;
+                Assert.True(handled.IsCompletedSuccessfully);
+
+                Assert.Equal("已连接 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
+                Assert.Equal("对局监控中", ((TextBlock)window.FindName("OverallStatusText")).Text);
+
+                handled = (Task)handle.Invoke(coordinator, [new ConnectionBecameStale(2L)])!;
+                Assert.True(handled.IsCompletedSuccessfully);
+                Assert.Equal("连接不稳定", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
+
+                handled = (Task)handle.Invoke(coordinator, [new ConnectionRestored(3L)])!;
+                Assert.True(handled.IsCompletedSuccessfully);
+                Assert.Equal("已连接 · 当前存活", ((TextBlock)window.FindName("LeagueGameDataStateText")).Text);
             }
             catch (Exception exception)
             {

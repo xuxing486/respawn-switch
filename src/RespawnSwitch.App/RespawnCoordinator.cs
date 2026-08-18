@@ -63,6 +63,20 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     {
         switch (item)
         {
+            case LifeStateSynchronized x:
+                status(x.State == LifeState.Alive
+                    ? "League 对局数据已连接 · 当前存活"
+                    : "League 对局数据已连接 · 状态已同步");
+                break;
+            case ConnectionBecameStale:
+                _ = overlay.Dispatcher.BeginInvoke(overlay.MarkConnectionUnstable);
+                status("League 数据连接问题 · 对局接口暂时无响应");
+                break;
+            case ConnectionRestored:
+                status(machine.State.LifeState == LifeState.Dead
+                    ? "League 对局数据已恢复 · 当前阵亡"
+                    : "League 对局数据已恢复 · 当前存活");
+                break;
             case DeathConfirmed x:
                 game = await league.TryFindAsync(x.Sample.TimelineKey, shutdown.Token);
                 if (game is not null)

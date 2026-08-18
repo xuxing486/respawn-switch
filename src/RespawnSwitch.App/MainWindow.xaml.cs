@@ -133,7 +133,20 @@ public partial class MainWindow : Window
     private void SetRuntimeStatus(string text) => Dispatcher.Invoke(() =>
     {
         AddEvent(text);
-        if (text.Contains("已检测到死亡", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前阵亡"; SetOverall("对局监控中 · 当前阵亡", true); }
+        if (text.Contains("League 对局数据已连接", StringComparison.Ordinal) || text.Contains("League 对局数据已恢复", StringComparison.Ordinal))
+        {
+            var dead = text.Contains("当前阵亡", StringComparison.Ordinal);
+            LeagueGameDataStateText.Text = dead ? "已连接 · 当前阵亡" : "已连接 · 当前存活";
+            SetOverall(dead ? "对局监控中 · 当前阵亡" : "对局监控中", true);
+            SetIssue("League 对局数据读取正常。", false);
+        }
+        else if (text.Contains("League 数据连接问题", StringComparison.Ordinal))
+        {
+            LeagueGameDataStateText.Text = "连接不稳定";
+            SetOverall("对局连接不稳定", false);
+            SetIssue(text, true);
+        }
+        else if (text.Contains("已检测到死亡", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前阵亡"; SetOverall("对局监控中 · 当前阵亡", true); }
         else if (text.Contains("复活", StringComparison.Ordinal)) { LeagueGameDataStateText.Text = "已连接 · 当前存活"; SetOverall("对局监控中", true); }
         else if (text.Contains("问题", StringComparison.Ordinal) || text.Contains("未连接", StringComparison.Ordinal)) SetIssue(text, true);
     });

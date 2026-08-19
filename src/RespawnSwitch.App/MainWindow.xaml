@@ -2,170 +2,54 @@
 <Window x:Class="RespawnSwitch.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RespawnSwitch · Stress Monster" Height="650" Width="930"
-        MinHeight="600" MinWidth="860" WindowStartupLocation="CenterScreen"
-        Background="#0C0B15" FontFamily="Segoe UI, Microsoft YaHei UI">
+        Title="RespawnSwitch · Stress Monster" Width="350" Height="460" MinWidth="350" MinHeight="460"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
+        ShowInTaskbar="False" Topmost="True" WindowStartupLocation="Manual"
+        FontFamily="Segoe UI, Microsoft YaHei UI" MouseEnter="PetSurface_MouseEnter"
+        MouseLeave="PetSurface_MouseLeave" MouseLeftButtonDown="PetSurface_MouseLeftButtonDown">
     <Window.Resources>
-        <SolidColorBrush x:Key="SoftText" Color="#AAA8BC"/>
-        <SolidColorBrush x:Key="Pink" Color="#F49AB5"/>
-        <SolidColorBrush x:Key="Mint" Color="#7EE0C2"/>
-        <Style x:Key="SoftCard" TargetType="Border">
-            <Setter Property="Background" Value="#D9161525"/>
-            <Setter Property="BorderBrush" Value="#2D2A43"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="20"/>
-            <Setter Property="Padding" Value="18"/>
-        </Style>
-        <Style x:Key="StatusTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="17"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#FFF9FC"/>
-        </Style>
-        <Style x:Key="SoftButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#242138"/>
-            <Setter Property="BorderBrush" Value="#3A3654"/>
-            <Setter Property="Padding" Value="17,10"/>
-        </Style>
+        <SolidColorBrush x:Key="PetMint" Color="#74E0C0"/><SolidColorBrush x:Key="PetPink" Color="#F3A0B9"/>
+        <Style x:Key="PetAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="FontSize" Value="11"/><Setter Property="Padding" Value="10,7"/></Style>
     </Window.Resources>
-
     <Window.Triggers>
-        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-            <BeginStoryboard>
-                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                    <DoubleAnimation Storyboard.TargetName="CatFloatTransform" Storyboard.TargetProperty="Y"
-                                     From="0" To="-7" Duration="0:0:2.8">
-                        <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-                    </DoubleAnimation>
-                    <DoubleAnimation Storyboard.TargetName="MascotGlow" Storyboard.TargetProperty="Opacity"
-                                     From="0.38" To="0.64" Duration="0:0:2.4"/>
-                </Storyboard>
-            </BeginStoryboard>
-        </EventTrigger>
+        <EventTrigger RoutedEvent="FrameworkElement.Loaded"><BeginStoryboard><Storyboard RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="PetFloat" Storyboard.TargetProperty="Y" From="2" To="-5" Duration="0:0:2.5"><DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction></DoubleAnimation>
+        </Storyboard></BeginStoryboard></EventTrigger>
     </Window.Triggers>
-
-    <Grid ClipToBounds="True">
-        <Ellipse Width="460" Height="460" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-180,-130,0" Opacity="0.32">
-            <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#74557E" Offset="0"/><GradientStop Color="#0074557E" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-            <Ellipse.Effect><BlurEffect Radius="36"/></Ellipse.Effect>
-        </Ellipse>
-        <Ellipse Width="360" Height="360" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-170,0,0,-190" Opacity="0.22">
-            <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#477D72" Offset="0"/><GradientStop Color="#00477D72" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-            <Ellipse.Effect><BlurEffect Radius="36"/></Ellipse.Effect>
-        </Ellipse>
-
-        <Grid Margin="30,25,26,25">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-
-            <Grid Grid.ColumnSpan="3">
-                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Border Width="34" Height="34" CornerRadius="10" Background="#312B43" BorderBrush="#5D526F" BorderThickness="1" Margin="0,0,11,0">
-                            <TextBlock Text="RS" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Pink}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Text="RespawnSwitch" FontSize="27" FontWeight="Bold" VerticalAlignment="Center" Foreground="#FFF9FC"/>
-                    </StackPanel>
-                    <TextBlock x:Name="FriendlyTitleText" Text="阵亡切换抖音，复活自动返回"
-                               Foreground="{StaticResource SoftText}" FontSize="13" Margin="45,4,0,0"/>
-                </StackPanel>
-                <Border x:Name="OverallStatusPill" Grid.Column="1" Background="#282238" CornerRadius="20" Padding="14,9" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse x:Name="OverallStatusLight" Width="9" Height="9" Fill="#F0B86E" Margin="0,0,8,0"/>
-                        <TextBlock x:Name="OverallStatusText" Text="正在检查" FontWeight="SemiBold" FontSize="13"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <StackPanel Grid.Row="1" Margin="0,24,0,0">
-                <Border Style="{StaticResource SoftCard}">
-                    <StackPanel>
-                        <TextBlock Text="连接状态" Foreground="{StaticResource SoftText}" FontSize="12" Margin="2,0,0,12"/>
-
-                        <Border Background="#211E31" CornerRadius="15" Padding="15,13" Margin="0,0,0,10">
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                <Border Width="36" Height="36" CornerRadius="18" Background="#3A3047" VerticalAlignment="Center">
-                                    <TextBlock Text="★" Foreground="{StaticResource Pink}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="2,0,0,0">
-                                    <TextBlock x:Name="GameStatusTitleText" Text="英雄联盟" Style="{StaticResource StatusTitle}"/>
-                                    <TextBlock x:Name="LeagueClientStateText" Text="正在找游戏" Foreground="{StaticResource SoftText}" Margin="0,4,0,0"/>
-                                    <TextBlock x:Name="LeagueGameDataStateText" Text="等待你进入游戏" Foreground="#7EE0C2" FontSize="12" Margin="0,3,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Background="#211E31" CornerRadius="15" Padding="15,13">
-                            <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                <Border Width="36" Height="36" CornerRadius="18" Background="#2B3940" VerticalAlignment="Center">
-                                    <TextBlock Text="♪" Foreground="{StaticResource Mint}" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="2,0,0,0">
-                                    <TextBlock x:Name="DouyinStatusTitleText" Text="抖音" Style="{StaticResource StatusTitle}"/>
-                                    <TextBlock x:Name="DouyinStateText" Text="请先打开一个视频" Foreground="{StaticResource SoftText}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                    <TextBlock x:Name="MediaStateText" Text="等待视频准备好" Foreground="#7EE0C2" FontSize="12" Margin="0,3,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                </Border>
-
-                <Border x:Name="IssuePanel" Style="{StaticResource SoftCard}" Margin="0,12,0,0" Padding="15" Background="#211D2E">
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                        <Border Width="30" Height="30" CornerRadius="15" Background="#3D3044">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource Pink}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <TextBlock x:Name="IssueText" Grid.Column="1" Text="正在检查游戏与抖音。" Foreground="#D8D3E3"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" Margin="4,0,0,0"/>
-                    </Grid>
-                </Border>
-
-                <Grid Margin="0,12,0,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Text="抖音来源" Foreground="{StaticResource SoftText}" FontSize="12" Margin="2,0,0,5"/>
-                        <ComboBox x:Name="DouyinTargetCombo" Width="220" SelectionChanged="DouyinTarget_Changed">
-                            <ComboBoxItem Content="自动选择" Tag="Auto"/>
-                            <ComboBoxItem Content="抖音客户端" Tag="Manual"/>
-                            <ComboBoxItem Content="抖音网页" Tag="WebOnly"/>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                        <Button x:Name="RetestButton" Content="重新检查" Style="{StaticResource PrimaryButton}" Click="Retest_Click"/>
-                        <Button x:Name="TestOverlayButton" Content="预览悬浮窗" Style="{StaticResource SoftButton}" Margin="8,0,0,0" Click="TestOverlay_Click"/>
-                    </StackPanel>
-                </Grid>
-
-                <Button Content="暂停助手" Style="{StaticResource SoftButton}" HorizontalAlignment="Left" Padding="12,6"
-                        FontSize="11" Foreground="{StaticResource SoftText}" Margin="0,12,0,0" Click="Stop_Click"/>
-            </StackPanel>
-
-            <Grid Grid.Column="2" Grid.Row="1" Margin="0,16,0,0">
-                <Ellipse x:Name="MascotGlow" Width="330" Height="330" VerticalAlignment="Center" Opacity="0.45">
-                    <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#7A4E637B" Offset="0"/><GradientStop Color="#004E637B" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
-                    <Ellipse.Effect><BlurEffect Radius="28"/></Ellipse.Effect>
-                </Ellipse>
-                <Image x:Name="CatgirlMascotImage" Source="Assets/stress-monster-nekomaid-v1.png" Stretch="Uniform"
-                       VerticalAlignment="Bottom" HorizontalAlignment="Center" MaxHeight="505" RenderOptions.BitmapScalingMode="HighQuality">
-                    <Image.RenderTransform><TranslateTransform x:Name="CatFloatTransform"/></Image.RenderTransform>
-                </Image>
-                <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Background="#D91A1828" BorderBrush="#403A57"
-                        BorderThickness="1" CornerRadius="16" Padding="13,8" Margin="0,0,0,9">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="7" Height="7" Fill="{StaticResource Mint}" Margin="0,0,8,0"/>
-                        <TextBlock Text="SYSTEM READY" Foreground="#DDE7E5" FontSize="11" FontWeight="SemiBold"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Grid x:Name="TechnicalDetailsPanel" Visibility="Collapsed">
-                <TextBlock x:Name="AutomationStateText"/>
-                <ListBox x:Name="EventLog"/>
-                <TextBlock Text="Stress Monster"/>
-            </Grid>
+    <Grid x:Name="PetRoot" ClipToBounds="False">
+        <Grid x:Name="PetCharacter" Width="330" Height="440" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="PetScaleTransform" ScaleX="1" ScaleY="1" CenterX="165" CenterY="300"/><TranslateTransform x:Name="PetFloat"/></TransformGroup></Grid.RenderTransform>
+            <Ellipse Width="235" Height="45" VerticalAlignment="Bottom" Margin="0,0,0,7" Opacity="0.34" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#A04C465E" Offset="0"/><GradientStop Color="#004C465E" Offset="1"/></RadialGradientBrush></Ellipse.Fill><Ellipse.Effect><BlurEffect Radius="13"/></Ellipse.Effect></Ellipse>
+            <Image x:Name="CatgirlMascotImage" Source="Assets/stress-monster-pet-idle.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="5,0"/>
+            <!-- Local-only pet touch areas; there is no global mouse hook. -->
+            <Border x:Name="HeadTouchZone" Width="138" Height="105" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-12,22,0,0" Background="#01000000" CornerRadius="55" MouseLeftButtonUp="HeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
+            <Border x:Name="HandTouchZone" Width="82" Height="92" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="21,93,0,0" Background="#01000000" CornerRadius="35" MouseLeftButtonUp="HandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
+            <Border x:Name="TailTouchZone" Width="97" Height="185" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,25,0,0" Background="#01000000" CornerRadius="46" MouseLeftButtonUp="TailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
         </Grid>
+        <Border x:Name="ReactionBubble" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,26,0,0" MaxWidth="210" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="17" Padding="13,9">
+            <TextBlock x:Name="ReactionText" Text="今天也要顺利开黑喵。" Foreground="#FFF8FC" FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+        <Border x:Name="PetPanel" Visibility="Collapsed" Width="338" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#F0181727" BorderBrush="#665A4F70" BorderThickness="1" CornerRadius="23" Padding="16" Margin="6,4,6,0">
+            <Border.Effect><DropShadowEffect Color="#B0000000" BlurRadius="20" ShadowDepth="4" Opacity="0.58"/></Border.Effect>
+            <StackPanel>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="RespawnSwitch" FontWeight="Bold" FontSize="18" Foreground="#FFF8FC"/><TextBlock x:Name="FriendlyTitleText" Text="阵亡看抖音，复活回游戏" Foreground="#B9B4C8" FontSize="11" Margin="0,2,0,0"/></StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="PinButton" Content="置顶" Style="{StaticResource PetAction}" Click="Pin_Click"/><Button Content="×" Width="30" Padding="0" Margin="6,0,0,0" Click="ClosePanel_Click"/></StackPanel>
+                </Grid>
+                <Border x:Name="OverallStatusPill" Background="#2C2830" CornerRadius="15" Padding="11,8" Margin="0,12,0,8"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions><Ellipse x:Name="OverallStatusLight" Width="9" Height="9" Fill="#FDB022" Margin="0,0,8,0"/><TextBlock x:Name="OverallStatusText" Grid.Column="1" Text="正在检查" FontWeight="SemiBold" FontSize="12"/></Grid></Border>
+                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <Border Background="#B8232033" CornerRadius="13" Padding="10" Margin="0,0,4,0"><StackPanel><TextBlock x:Name="GameStatusTitleText" Text="英雄联盟" FontWeight="SemiBold"/><TextBlock x:Name="LeagueClientStateText" Text="正在找游戏" Foreground="#AAA8BC" FontSize="11" Margin="0,3,0,0"/><TextBlock x:Name="LeagueGameDataStateText" Text="等待你进入游戏" Foreground="{StaticResource PetMint}" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+                    <Border Grid.Column="1" Background="#B8232033" CornerRadius="13" Padding="10" Margin="4,0,0,0"><StackPanel><TextBlock x:Name="DouyinStatusTitleText" Text="抖音" FontWeight="SemiBold"/><TextBlock x:Name="DouyinStateText" Text="请打开一个视频" Foreground="#AAA8BC" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/><TextBlock x:Name="MediaStateText" Text="等待视频" Foreground="{StaticResource PetMint}" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+                </Grid>
+                <Border x:Name="IssuePanel" Background="#2A222D" BorderBrush="#55323B" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,8"><TextBlock x:Name="IssueText" Text="正在检查游戏与抖音。" Foreground="#E6DFE9" FontSize="11" TextWrapping="Wrap"/></Border>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <ComboBox x:Name="DouyinTargetCombo" Width="145" SelectionChanged="DouyinTarget_Changed"><ComboBoxItem Content="自动选择" Tag="Auto"/><ComboBoxItem Content="抖音客户端" Tag="Manual"/><ComboBoxItem Content="抖音网页" Tag="WebOnly"/></ComboBox>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="RetestButton" Content="重新检查" Style="{StaticResource PetAction}" Click="Retest_Click"/><Button x:Name="TestOverlayButton" Content="预览" Style="{StaticResource PetAction}" Margin="5,0,0,0" Click="TestOverlay_Click"/></StackPanel>
+                </Grid>
+                <Button Content="暂停助手" Style="{StaticResource PetAction}" HorizontalAlignment="Left" Margin="0,7,0,0" Click="Stop_Click"/>
+            </StackPanel>
+        </Border>
+        <Button x:Name="StatusBead" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,10" Padding="12,7" Background="#E6201D2D" BorderBrush="#766A607F" Click="ShowPetPanel_Click"><StackPanel Orientation="Horizontal"><Ellipse Width="8" Height="8" Fill="{StaticResource PetMint}" Margin="0,0,7,0"/><TextBlock x:Name="PetStatusText" Text="点我看看状态" FontSize="11"/></StackPanel></Button>
+        <Grid x:Name="TechnicalDetailsPanel" Visibility="Collapsed"><TextBlock x:Name="AutomationStateText"/><ListBox x:Name="EventLog"/><TextBlock Text="Stress Monster"/></Grid>
     </Grid>
 </Window>

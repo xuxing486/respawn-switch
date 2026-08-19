@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.IO;
 using System.Text.Json.Serialization;
 using RespawnSwitch.Application.Douyin;
+using RespawnSwitch.Application.Pet;
 
 namespace RespawnSwitch.App;
 
@@ -13,7 +14,11 @@ public sealed record AppSettings(
     string? LastValidatedSignatureThumbprint,
     string? DouyinWindowClass,
     string? SourceAppUserModelId,
-    string? DiagnosticFingerprint)
+    string? DiagnosticFingerprint,
+    PetDockEdge PetEdge,
+    int PetOffset,
+    bool PetPinned,
+    double PetScale)
 {
     public static AppSettings Default { get; } = new(
         PreferredDouyinPath: null,
@@ -23,7 +28,11 @@ public sealed record AppSettings(
         LastValidatedSignatureThumbprint: null,
         DouyinWindowClass: null,
         SourceAppUserModelId: null,
-        DiagnosticFingerprint: null);
+        DiagnosticFingerprint: null,
+        PetEdge: PetDockEdge.Right,
+        PetOffset: 120,
+        PetPinned: false,
+        PetScale: 1.0);
 
     [JsonIgnore]
     public string DouyinPath => PreferredDouyinPath ?? @"D:\douyin\douyin.exe";
@@ -56,7 +65,11 @@ public static class AppSettingsStore
             LastValidatedSignatureThumbprint: ReadString(root, "LastValidatedSignatureThumbprint"),
             DouyinWindowClass: ReadString(root, "DouyinWindowClass"),
             SourceAppUserModelId: ReadString(root, "SourceAppUserModelId"),
-            DiagnosticFingerprint: ReadString(root, "DiagnosticFingerprint"));
+            DiagnosticFingerprint: ReadString(root, "DiagnosticFingerprint"),
+            PetEdge: ReadEnum(root, "PetEdge", PetDockEdge.Right),
+            PetOffset: ReadInt32(root, "PetOffset", 120),
+            PetPinned: ReadBoolean(root, "PetPinned", fallback: false),
+            PetScale: ReadDouble(root, "PetScale", 1.0));
     }
     public static async Task SaveAsync(AppSettings settings)
     {
@@ -74,6 +87,20 @@ public static class AppSettingsStore
         root.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? value.GetBoolean()
             : fallback;
+
+    private static int ReadInt32(JsonElement root, string name, int fallback) =>
+        root.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed) ? parsed : fallback;
+
+    private static double ReadDouble(JsonElement root, string name, double fallback) =>
+        root.TryGetProperty(name, out var value) && value.TryGetDouble(out var parsed) && double.IsFinite(parsed) ? parsed : fallback;
+
+    private static TEnum ReadEnum<TEnum>(JsonElement root, string name, TEnum fallback) where TEnum : struct, Enum
+    {
+        if (!root.TryGetProperty(name, out var value)) return fallback;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) && Enum.IsDefined(typeof(TEnum), number))
+            return (TEnum)Enum.ToObject(typeof(TEnum), number);
+        return value.ValueKind == JsonValueKind.String && Enum.TryParse<TEnum>(value.GetString(), true, out var parsed) ? parsed : fallback;
+    }
 
     private static DouyinDiscoveryMode ReadMode(JsonElement root)
     {

@@ -1,5 +1,6 @@
 using RespawnSwitch.Application.Douyin;
 using RespawnSwitch.App;
+using RespawnSwitch.Application.Pet;
 
 namespace RespawnSwitch.Desktop.IntegrationTests.Settings;
 
@@ -26,6 +27,17 @@ public sealed class AppSettingsMigrationTests
         Assert.Equal("Chrome_WidgetWin_1", settings.DouyinWindowClass);
         Assert.Equal("douyin.aumid", settings.SourceAppUserModelId);
         Assert.Equal("fingerprint", settings.DiagnosticFingerprint);
+    }
+
+    [Fact]
+    public void Deserialize_Version035Json_adds_safe_pet_defaults()
+    {
+        var settings = AppSettingsStore.Deserialize("{ \"DiscoveryMode\": 0 }");
+
+        Assert.Equal(PetDockEdge.Right, settings.PetEdge);
+        Assert.Equal(120, settings.PetOffset);
+        Assert.False(settings.PetPinned);
+        Assert.Equal(1.0, settings.PetScale);
     }
 
     [Fact]

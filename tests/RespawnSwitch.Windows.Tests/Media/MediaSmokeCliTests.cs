@@ -33,4 +33,15 @@ public sealed class MediaSmokeCliTests
         Assert.False(pause.IsValid);
         Assert.Equal(MediaSmokeCommand.Invalid, pause.Command);
     }
+
+    [Fact]
+    public void Parse_cycle_test_requires_both_exact_identity_fields()
+    {
+        var valid = MediaSmokeCli.Parse(["cycle-test", "--aumid", "douyin.aumid", "--fingerprint", "fingerprint-v1"]);
+        var invalid = MediaSmokeCli.Parse(["cycle-test", "--aumid", "douyin.aumid", "--fingerprint", ""]);
+
+        Assert.True(valid.IsValid);
+        Assert.Equal(MediaSmokeCommand.CycleTest, valid.Command);
+        Assert.False(invalid.IsValid);
+    }
 }

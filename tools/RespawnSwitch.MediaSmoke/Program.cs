@@ -2,10 +2,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using RespawnSwitch.Application.Media;
 using RespawnSwitch.Windows.Media;
+using System.Diagnostics;
 
 namespace RespawnSwitch.MediaSmoke;
 
-public enum MediaSmokeCommand { Invalid, Help, List, Probe }
+public enum MediaSmokeCommand { Invalid, Help, List, Probe, CycleTest }
 
 public sealed record MediaSmokeOptions(
     MediaSmokeCommand Command,
@@ -64,6 +65,51 @@ public static class MediaSmokeCli
                 string.Equals(session.SourceAppUserModelId, profile.SourceAppUserModelId, StringComparison.Ordinal) &&
                 string.Equals(session.DiagnosticFingerprint, profile.DiagnosticFingerprint, StringComparison.Ordinal));
             var controller = new GsmtcDouyinMediaController(profile);
+            if (options.Command == MediaSmokeCommand.CycleTest)
+            {
+                if (matchCount != 1)
+                {
+                    WriteJson(new { controller = controller.Name, matchCount, ok = false, failureCode = matchCount == 0 ? "no-match" : "ambiguous-match" });
+                    return matchCount == 0 ? 2 : 3;
+                }
+
+                var timer = Stopwatch.StartNew();
+                var initial = await controller.GetPlaybackStateAsync(CancellationToken.None);
+                MediaCommandResult? play = null;
+                MediaCommandResult? pause = null;
+                MediaCommandResult? restored = null;
+                try
+                {
+                    if (initial.IsVerified && initial.State is PlaybackState.Playing or PlaybackState.Paused)
+                    {
+                        play = await controller.PlayAsync(CancellationToken.None);
+                        if (play.StateVerified) pause = await controller.PauseAsync(CancellationToken.None);
+                    }
+                }
+                finally
+                {
+                    if (initial.IsVerified)
+                        restored = initial.State == PlaybackState.Playing
+                            ? await controller.PlayAsync(CancellationToken.None)
+                            : initial.State == PlaybackState.Paused
+                                ? await controller.PauseAsync(CancellationToken.None)
+                                : null;
+                }
+
+                timer.Stop();
+                var ok = initial.IsVerified && play?.StateVerified == true && pause?.StateVerified == true &&
+                         restored?.StateVerified == true && restored.FinalState == initial.State;
+                WriteJson(new
+                {
+                    controller = controller.Name, matchCount, ok, elapsedMilliseconds = timer.ElapsedMilliseconds,
+                    initialState = initial.State,
+                    playVerified = play?.StateVerified ?? false,
+                    pauseVerified = pause?.StateVerified ?? false,
+                    restoredState = restored?.FinalState ?? PlaybackState.Unknown,
+                    failureCode = ok ? string.Empty : pause?.FailureCode ?? play?.FailureCode ?? initial.FailureCode
+                });
+                return ok ? 0 : 5;
+            }
             var probe = await controller.ProbeAsync(CancellationToken.None);
             WriteJson(new
             {
@@ -130,6 +176,7 @@ public static class MediaSmokeCli
         command = value switch
         {
             "probe" => MediaSmokeCommand.Probe,
+            "cycle-test" => MediaSmokeCommand.CycleTest,
             _ => MediaSmokeCommand.Invalid
         };
         return command != MediaSmokeCommand.Invalid;
@@ -145,7 +192,7 @@ public static class MediaSmokeCli
     };
 
     private static void PrintHelp(TextWriter writer) => writer.WriteLine(
-        "RespawnSwitch.MediaSmoke list | probe --aumid AUMID --fingerprint SHA256_HEX");
+        "RespawnSwitch.MediaSmoke list | probe|cycle-test --aumid AUMID --fingerprint SHA256_HEX");
 
     private static void WriteJson<T>(T value) =>
         Console.WriteLine(JsonSerializer.Serialize(value, JsonOptions));

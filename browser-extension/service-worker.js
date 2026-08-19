@@ -15,7 +15,7 @@ async function postStatus(payload) {
 
 async function execute(command) {
   const tabs = await douyinTabs();
-  const base = { sequence: command.sequence, browser: navigator.userAgent.includes('Edg/') ? 'Edge' : 'Chrome', tabCount: tabs.length };
+  const base = { cycleId: command.cycleId, sequence: command.sequence, browser: navigator.userAgent.includes('Edg/') ? 'Edge' : 'Chrome', tabCount: tabs.length };
   if (tabs.length !== 1) {
     await postStatus({ ...base, ok: false, state: 'ambiguous', errorCode: tabs.length ? 'multiple-tabs' : 'no-tab' });
     return;
@@ -38,7 +38,7 @@ async function poll() {
     const response = await fetch(`${bridge}/command?after=${lastSequence}`, { cache: 'no-store' });
     const command = await response.json();
     if (command?.sequence > lastSequence) { lastSequence = command.sequence; await execute(command); }
-    else if (Date.now() - lastHeartbeat > 4000) { lastHeartbeat = Date.now(); await execute({ sequence: lastSequence, command: 'probe' }); }
+    else if (Date.now() - lastHeartbeat > 4000) { lastHeartbeat = Date.now(); await execute({ cycleId: '00000000-0000-0000-0000-000000000000', sequence: lastSequence, command: 'probe' }); }
   } catch { }
 }
 

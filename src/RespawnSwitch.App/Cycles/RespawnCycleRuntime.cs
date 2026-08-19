@@ -47,6 +47,17 @@ public sealed class RespawnCycleRuntime : IAsyncDisposable
         }
     }
 
+    public bool TryReserve(Action<RespawnCycleRuntime> reserve)
+    {
+        ArgumentNullException.ThrowIfNull(reserve);
+        lock (gate)
+        {
+            if (stage != RespawnCycleStage.EnteringDouyin) return false;
+            reserve(this);
+            return true;
+        }
+    }
+
     public Task RequestReturnAsync() => ReturnOnceAsync(_ => Task.CompletedTask);
 
     public Task ReturnOnceAsync(Func<RespawnCycleRuntime, Task> cleanup)

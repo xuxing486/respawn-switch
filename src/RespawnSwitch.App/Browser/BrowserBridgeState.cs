@@ -1,7 +1,7 @@
 namespace RespawnSwitch.App.Browser;
 
-public sealed record BrowserCommand(long Sequence, string Command);
-public sealed record BrowserCommandResult(long Sequence, bool Ok, string State, string Browser, int TabCount, string ErrorCode);
+public sealed record BrowserCommand(Guid CycleId, long Sequence, string Command);
+public sealed record BrowserCommandResult(Guid CycleId, long Sequence, bool Ok, string State, string Browser, int TabCount, string ErrorCode);
 
 public sealed class BrowserBridgeState
 {
@@ -10,17 +10,21 @@ public sealed class BrowserBridgeState
     private BrowserCommand? latest;
     private TaskCompletionSource<BrowserCommandResult>? pending;
 
-    public Task<BrowserCommandResult> IssueAsync(string command, TimeSpan timeout, CancellationToken cancellationToken)
+    public Task<BrowserCommandResult> IssueAsync(Guid cycleId, string command, TimeSpan timeout, CancellationToken cancellationToken)
     {
         TaskCompletionSource<BrowserCommandResult> completion;
+        long issuedSequence;
         lock (gate)
         {
-            latest = new BrowserCommand(++sequence, command);
+            var previous = latest;
+            issuedSequence = ++sequence;
+            latest = new BrowserCommand(cycleId, issuedSequence, command);
             completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            pending?.TrySetResult(new(sequence - 1, false, "superseded", "", 0, "superseded"));
+            if (previous is not null)
+                pending?.TrySetResult(new(previous.CycleId, previous.Sequence, false, "superseded", "", 0, "superseded"));
             pending = completion;
         }
-        return WaitAsync(completion.Task, timeout, cancellationToken);
+        return WaitAsync(cycleId, issuedSequence, completion.Task, timeout, cancellationToken);
     }
 
     public BrowserCommand? ReadAfter(long lastSequence)
@@ -32,15 +36,15 @@ public sealed class BrowserBridgeState
     {
         lock (gate)
         {
-            if (latest?.Sequence != result.Sequence) return;
+            if (latest?.CycleId != result.CycleId || latest.Sequence != result.Sequence) return;
             pending?.TrySetResult(result);
             pending = null;
         }
     }
 
-    private static async Task<BrowserCommandResult> WaitAsync(Task<BrowserCommandResult> task, TimeSpan timeout, CancellationToken token)
+    private static async Task<BrowserCommandResult> WaitAsync(Guid cycleId, long sequence, Task<BrowserCommandResult> task, TimeSpan timeout, CancellationToken token)
     {
         try { return await task.WaitAsync(timeout, token); }
-        catch (TimeoutException) { return new(0, false, "timeout", "", 0, "extension-timeout"); }
+        catch (TimeoutException) { return new(cycleId, sequence, false, "timeout", "", 0, "extension-timeout"); }
     }
 }

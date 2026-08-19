@@ -17,6 +17,7 @@ using RespawnSwitch.Core.Game;
 using RespawnSwitch.App.Browser;
 using RespawnSwitch.Application.Audio;
 using RespawnSwitch.Windows.Audio;
+using RespawnSwitch.App.Cycles;
 
 namespace RespawnSwitch.App;
 
@@ -25,13 +26,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     private readonly RespawnOverlayWindow overlay; private readonly RespawnStateMachine machine; private readonly ILeagueGameProbe probe;
     private readonly ILeagueWindowController league; private readonly IDouyinWindowController douyin; private readonly TimeProvider time; private AppSettings settings; private readonly Action<string> status;
     private readonly DouyinDiscoveryController discovery; private readonly IDouyinWebFallbackLauncher webFallback; private readonly WebFallbackCycleGuard webGuard = new();
-    private readonly ConcurrentDictionary<RespawnCycleId, byte> desktopCycles = new();
-    private readonly ConcurrentDictionary<RespawnCycleId, byte> webCycles = new();
-    private readonly RespawnCycleRunner cycleRunner = new();
+    private readonly ConcurrentDictionary<RespawnCycleId, RespawnCycleRuntime> cycles = new();
     private readonly BrowserBridgeState? browserState;
     private readonly RespawnAudioMuteCoordinator leagueAudio = new(new WindowsProcessAudioMuteController());
     private readonly RespawnSwitch.Windows.Identity.IWindowSnapshotSource windowSource; private readonly RespawnSwitch.Windows.Identity.IDouyinProcessIdentityReader identityReader;
-    private readonly CancellationTokenSource shutdown = new(); private Task? loop; private GameWindowTarget? game; private IDouyinMediaController? media;
+    private readonly CancellationTokenSource shutdown = new(); private Task? loop; private GameWindowTarget? game;
     public RespawnCoordinator(
         RespawnOverlayWindow overlay,
         AppSettings settings,
@@ -92,7 +91,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 break;
             case AttachmentRequested x when game is not null:
                 var capturedGame = game;
-                cycleRunner.Start(x.CycleId, token => AttachDouyinAsync(x, capturedGame, token));
+                var runtime = new RespawnCycleRuntime(x.CycleId, shutdown.Token);
+                if (cycles.TryAdd(x.CycleId, runtime))
+                    runtime.StartEnter((cycle, token) => AttachDouyinAsync(x, capturedGame, cycle, token));
+                else
+                    await runtime.DisposeAsync();
                 break;
             case DeadSampleUpdated:
                 break;
@@ -100,13 +103,13 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 _ = overlay.Dispatcher.BeginInvoke(overlay.EndCycle);
                 webGuard.Complete(x.CycleId);
                 var capturedLeague = game;
-                _ = CompleteRespawnAsync(x.CycleId, capturedLeague);
                 status("已确认复活 · 正在暂停抖音并返回 League");
+                await CompleteRespawnAsync(x.CycleId, capturedLeague);
                 break;
         }
     }
 
-    private async Task AttachDouyinAsync(AttachmentRequested x, GameWindowTarget capturedGame, CancellationToken token)
+    private async Task AttachDouyinAsync(AttachmentRequested x, GameWindowTarget capturedGame, RespawnCycleRuntime runtime, CancellationToken token)
     {
         var switchedToDouyin = false;
         try
@@ -119,8 +122,9 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             {
                 if (!webGuard.TryBegin(x.CycleId)) return;
                 if (browserState is null) { status("抖音网页问题：本地浏览器桥接未运行"); return; }
-                var webResult = await browserState.IssueAsync("play", TimeSpan.FromSeconds(3), token);
-                if (webResult.Ok) { webCycles[x.CycleId] = 0; switchedToDouyin = true; status($"抖音网页已连接 · {webResult.Browser} 正在播放"); }
+                if (!runtime.TryReserve(c => c.WebCommandIssued = true)) return;
+                var webResult = await browserState.IssueAsync(x.CycleId.Value, "play", TimeSpan.FromSeconds(3), token);
+                if (webResult.Ok && runtime.TryCommit(_ => { })) { switchedToDouyin = true; status($"抖音网页已连接 · {webResult.Browser} 正在播放"); }
                 else status($"抖音网页问题：{webResult.ErrorCode}");
                 return;
             }
@@ -145,6 +149,7 @@ public sealed class RespawnCoordinator : IAsyncDisposable
             if (!string.IsNullOrWhiteSpace(settings.SourceAppUserModelId) && !string.IsNullOrWhiteSpace(settings.DiagnosticFingerprint))
             {
                 cycleMedia = new GsmtcDouyinMediaController(new GsmtcMediaProfile(settings.SourceAppUserModelId, settings.DiagnosticFingerprint));
+                if (!runtime.TryReserve(c => c.Media = cycleMedia)) return;
                 playTask = cycleMedia.PlayAsync(token).AsTask();
             }
 
@@ -164,8 +169,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 status($"抖音窗口问题：{attached.FailureCode}");
                 return;
             }
-            desktopCycles[x.CycleId] = 0;
-            switchedToDouyin = true;
+            if (!runtime.TryReserve(c => c.DesktopAttached = true))
+            {
+                _ = await douyin.RestoreAsync(x.CycleId, CancellationToken.None);
+                return;
+            }
 
             MediaCommandResult result;
             DouyinMediaDiscovery? discovered = null;
@@ -178,9 +186,15 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 discovered = await FindMediaAsync(TimeSpan.FromSeconds(1), token);
                 if (discovered is null) { status("抖音媒体问题：请先打开并播放一次视频"); return; }
                 cycleMedia = new GsmtcDouyinMediaController(new GsmtcMediaProfile(discovered.SourceAppUserModelId, discovered.DiagnosticFingerprint));
+                if (!runtime.TryReserve(c => c.Media = cycleMedia)) return;
                 result = await cycleMedia.PlayAsync(token);
             }
-            media = cycleMedia;
+            if (!result.StateVerified || !runtime.TryCommit(_ => { }))
+            {
+                status($"抖音媒体问题：{result.FailureCode}");
+                return;
+            }
+            switchedToDouyin = true;
             settings = settings with
             {
                 PreferredDouyinPath = douyinPath,
@@ -190,13 +204,14 @@ public sealed class RespawnCoordinator : IAsyncDisposable
                 DiagnosticFingerprint = discovered?.DiagnosticFingerprint ?? settings.DiagnosticFingerprint
             };
             await AppSettingsStore.SaveAsync(settings);
-            status(result.StateVerified ? "抖音已连接 · 已置顶并播放" : $"抖音媒体问题：{result.FailureCode}");
+            status("抖音已连接 · 已置顶并播放");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex) { status($"抖音连接问题：{ex.GetType().Name}"); }
         finally
         {
-            if (!switchedToDouyin) await leagueAudio.CompleteAsync(x.CycleId);
+            if (!switchedToDouyin && runtime.Stage is not RespawnCycleStage.ReturningToLeague and not RespawnCycleStage.Completed)
+                await leagueAudio.CompleteAsync(x.CycleId);
         }
     }
 
@@ -204,22 +219,35 @@ public sealed class RespawnCoordinator : IAsyncDisposable
     {
         try
         {
-            await cycleRunner.CancelAsync(cycleId, TimeSpan.FromMilliseconds(750));
-            if (desktopCycles.TryRemove(cycleId, out _))
+            if (cycles.TryGetValue(cycleId, out var runtime))
             {
-                if (media is not null) _ = await media.PauseAsync(shutdown.Token);
-                _ = await douyin.RestoreAsync(cycleId, shutdown.Token);
+                await runtime.ReturnOnceAsync(async cycle =>
+                {
+                    if (cycle.Media is not null)
+                    {
+                        var paused = await cycle.Media.PauseAsync(shutdown.Token);
+                        if (!paused.StateVerified) status($"抖音暂停问题：{paused.FailureCode}");
+                    }
+                    if (cycle.WebCommandIssued && browserState is not null)
+                    {
+                        var paused = await browserState.IssueAsync(cycleId.Value, "pause", TimeSpan.FromSeconds(2), shutdown.Token);
+                        if (!paused.Ok) status($"抖音网页暂停问题：{paused.ErrorCode}");
+                    }
+                    if (cycle.DesktopAttached) _ = await douyin.RestoreAsync(cycleId, shutdown.Token);
+                    if (capturedLeague is not null) _ = await league.TryRestoreFocusOnceAsync(capturedLeague, shutdown.Token);
+                    await leagueAudio.CompleteAsync(cycleId);
+                });
+                if (cycles.TryRemove(cycleId, out var completed)) await completed.DisposeAsync();
             }
-            if (webCycles.TryRemove(cycleId, out _) && browserState is not null)
+            else
             {
-                var paused = await browserState.IssueAsync("pause", TimeSpan.FromSeconds(2), shutdown.Token);
-                if (!paused.Ok) status($"抖音网页暂停问题：{paused.ErrorCode}");
+                if (capturedLeague is not null) _ = await league.TryRestoreFocusOnceAsync(capturedLeague, shutdown.Token);
+                await leagueAudio.CompleteAsync(cycleId);
             }
-            if (capturedLeague is not null) _ = await league.TryRestoreFocusOnceAsync(capturedLeague, shutdown.Token);
             status("已复活 · League 已恢复");
         }
         catch (OperationCanceledException) { }
-        finally { await leagueAudio.CompleteAsync(cycleId); }
+        catch (Exception ex) { status($"返回 League 时遇到问题：{ex.GetType().Name}"); await leagueAudio.CompleteAsync(cycleId); }
     }
 
     private static double ValidSeconds(double? value) => value is { } seconds && double.IsFinite(seconds) && seconds >= 0 ? seconds : 0;
@@ -250,5 +278,11 @@ public sealed class RespawnCoordinator : IAsyncDisposable
         var until = DateTime.UtcNow + timeout;
         do { var matches = await DouyinGsmTcDiscovery.DiscoverAsync(token); if (matches.Count == 1) return matches[0]; await Task.Delay(250, token); } while (DateTime.UtcNow < until); return null;
     }
-    public async ValueTask DisposeAsync() { await StopAsync(); await cycleRunner.DisposeAsync(); shutdown.Dispose(); }
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+        foreach (var runtime in cycles.Values) await runtime.DisposeAsync();
+        cycles.Clear();
+        shutdown.Dispose();
+    }
 }

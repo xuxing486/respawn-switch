@@ -66,6 +66,44 @@ public sealed class GsmtcDouyinMediaControllerTests
     }
 
     [Fact]
+    public async Task PauseAsync_WaitsUntilAcceptedCommandActuallyBecomesPaused()
+    {
+        var gateway = new FakeGateway(
+            enumerations: [[Session("stable")], [Session("stable")], [Session("stable")], [Session("stable")]],
+            states: [PlaybackState.Playing, PlaybackState.Playing, PlaybackState.Paused]);
+        var delay = new RecordingVerificationDelay();
+
+        var result = await new GsmtcDouyinMediaController(Profile, gateway, delay)
+            .PauseAsync(CancellationToken.None);
+
+        Assert.True(result.StateVerified);
+        Assert.Equal(PlaybackState.Paused, result.FinalState);
+        Assert.Equal(1, gateway.PauseCalls);
+        Assert.Single(delay.Delays);
+    }
+
+    [Fact]
+    public async Task PauseAsync_RetriesOneExplicitPause_WhenFirstVerificationWindowExpires()
+    {
+        var gateway = new FakeGateway(
+            enumerations: Enumerable.Repeat<IReadOnlyList<GsmtcSessionDescriptor>>([Session("stable")], 10).ToArray(),
+            states:
+            [
+                PlaybackState.Playing,
+                PlaybackState.Playing, PlaybackState.Playing, PlaybackState.Playing, PlaybackState.Playing,
+                PlaybackState.Playing, PlaybackState.Paused
+            ]);
+        var delay = new RecordingVerificationDelay();
+
+        var result = await new GsmtcDouyinMediaController(Profile, gateway, delay)
+            .PauseAsync(CancellationToken.None);
+
+        Assert.True(result.StateVerified);
+        Assert.Equal(2, gateway.PauseCalls);
+        Assert.Equal(0, gateway.PlayCalls);
+    }
+
+    [Fact]
     public async Task PlayAsync_ReturnsCommandRejected_WhenProviderRejectsExplicitPlay()
     {
         var gateway = new FakeGateway(
@@ -84,8 +122,8 @@ public sealed class GsmtcDouyinMediaControllerTests
     public async Task PlayAsync_ReturnsStateUnverified_WhenAcceptedCommandDoesNotReachPlaying()
     {
         var gateway = new FakeGateway(
-            enumerations: [[Session("stable")], [Session("stable")], [Session("stable")]],
-            states: [PlaybackState.Paused, PlaybackState.Paused]);
+            enumerations: Enumerable.Repeat<IReadOnlyList<GsmtcSessionDescriptor>>([Session("stable")], 6).ToArray(),
+            states: [PlaybackState.Paused, PlaybackState.Paused, PlaybackState.Paused, PlaybackState.Paused, PlaybackState.Paused]);
 
         var result = await new GsmtcDouyinMediaController(Profile, gateway)
             .PlayAsync(CancellationToken.None);
@@ -138,6 +176,17 @@ public sealed class GsmtcDouyinMediaControllerTests
 
     private static GsmtcSessionDescriptor Session(string token) =>
         new(token, "douyin.aumid", "fingerprint-v1", PlaybackState.Paused, CanPlay: true, CanPause: true);
+
+    private sealed class RecordingVerificationDelay : IMediaVerificationDelay
+    {
+        public List<TimeSpan> Delays { get; } = [];
+
+        public ValueTask WaitAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            Delays.Add(delay);
+            return ValueTask.CompletedTask;
+        }
+    }
 
     private sealed class FakeGateway(
         IReadOnlyList<IReadOnlyList<GsmtcSessionDescriptor>> enumerations,

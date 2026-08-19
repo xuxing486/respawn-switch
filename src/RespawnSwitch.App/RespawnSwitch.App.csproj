@@ -38,6 +38,7 @@
     <Resource Include="Assets\stress-monster-nekomaid-v1.png" />
     <Resource Include="Assets\stress-monster-pet-idle.png" />
     <Resource Include="Assets\stress-monster-pet-blink.png" />
+    <Resource Include="Assets\stress-monster-pet-chibi.png" />
   </ItemGroup>
 
 </Project>

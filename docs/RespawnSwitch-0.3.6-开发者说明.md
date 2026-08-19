@@ -24,7 +24,7 @@
 
 ## 桌宠
 
-主窗口为 350×460、`WindowStyle=None`、`AllowsTransparency=True`、任务栏隐藏的 WPF 透明窗口。纯函数 `PetDockGeometry` 处理四边吸附、负坐标显示器和探出位置；设置只持久化边、偏移、置顶和缩放。
+主窗口为 `WindowStyle=None`、`AllowsTransparency=True`、任务栏隐藏的 WPF 透明窗口。收起态真实窗口约 155×205，只显示独立 Q 版素材；用户点开状态后才扩展为 350×460 并显示成人版素材和完整面板。关闭时窗口尺寸与命中范围一起缩小，不留下大块透明输入区域。纯函数 `PetDockGeometry` 处理四边吸附、负坐标显示器和探出位置；设置只持久化边、偏移、置顶和缩放。
 
 状态面板默认收起，鼠标悬停/点击展开。摸头、击掌和碰尾巴使用桌宠窗口内部命中区、短台词与局部缩放动画；未安装全局输入钩子。原创透明 ARGB 素材位于 `src/RespawnSwitch.App/Assets`，署名记录在同目录 README。
 

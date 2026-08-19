@@ -2,7 +2,7 @@
 <Window x:Class="RespawnSwitch.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RespawnSwitch · Stress Monster" Width="350" Height="460" MinWidth="350" MinHeight="460"
+        Title="RespawnSwitch · Stress Monster" Width="155" Height="205" MinWidth="145" MinHeight="190"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True" WindowStartupLocation="Manual"
         FontFamily="Segoe UI, Microsoft YaHei UI" MouseEnter="PetSurface_MouseEnter"
@@ -17,7 +17,7 @@
         </Storyboard></BeginStoryboard></EventTrigger>
     </Window.Triggers>
     <Grid x:Name="PetRoot" ClipToBounds="False">
-        <Grid x:Name="PetCharacter" Width="330" Height="440" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+        <Grid x:Name="AdultPetCharacter" Visibility="Collapsed" Width="330" Height="440" HorizontalAlignment="Center" VerticalAlignment="Bottom">
             <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="PetScaleTransform" ScaleX="1" ScaleY="1" CenterX="165" CenterY="300"/><TranslateTransform x:Name="PetFloat"/></TransformGroup></Grid.RenderTransform>
             <Ellipse Width="235" Height="45" VerticalAlignment="Bottom" Margin="0,0,0,7" Opacity="0.34" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#A04C465E" Offset="0"/><GradientStop Color="#004C465E" Offset="1"/></RadialGradientBrush></Ellipse.Fill><Ellipse.Effect><BlurEffect Radius="13"/></Ellipse.Effect></Ellipse>
             <Image x:Name="CatgirlMascotImage" Source="Assets/stress-monster-pet-idle.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="5,0"/>
@@ -26,7 +26,14 @@
             <Border x:Name="HandTouchZone" Width="82" Height="92" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="21,93,0,0" Background="#01000000" CornerRadius="35" MouseLeftButtonUp="HandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
             <Border x:Name="TailTouchZone" Width="97" Height="185" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,25,0,0" Background="#01000000" CornerRadius="46" MouseLeftButtonUp="TailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
         </Grid>
-        <Border x:Name="ReactionBubble" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,26,0,0" MaxWidth="210" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="17" Padding="13,9">
+        <Grid x:Name="ChibiPetCharacter" Width="150" Height="190" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="ChibiScaleTransform" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><TranslateTransform Y="-2"/></TransformGroup></Grid.RenderTransform>
+            <Image x:Name="ChibiMascotImage" Source="Assets/stress-monster-pet-chibi.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Border x:Name="ChibiHeadTouchZone" Width="94" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-7,5,0,0" Background="#01000000" CornerRadius="42" MouseLeftButtonUp="HeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
+            <Border x:Name="ChibiHandTouchZone" Width="48" Height="55" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,-5,0,0" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="HandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
+            <Border x:Name="ChibiTailTouchZone" Width="52" Height="90" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,22,0,0" Background="#01000000" CornerRadius="26" MouseLeftButtonUp="TailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+        </Grid>
+        <Border x:Name="ReactionBubble" Visibility="Collapsed" Width="145" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="14" Padding="9,7">
             <TextBlock x:Name="ReactionText" Text="今天也要顺利开黑喵。" Foreground="#FFF8FC" FontSize="12" TextWrapping="Wrap"/>
         </Border>
         <Border x:Name="PetPanel" Visibility="Collapsed" Width="338" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#F0181727" BorderBrush="#665A4F70" BorderThickness="1" CornerRadius="23" Padding="16" Margin="6,4,6,0">

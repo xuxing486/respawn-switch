@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private bool initialized;
     private bool panelLocked;
     private bool isPeeked;
+    private bool isExpanded;
     private System.Windows.Forms.NotifyIcon? trayIcon;
 
     public MainWindow()
@@ -46,7 +47,11 @@ public partial class MainWindow : Window
         readinessTimer = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, async (_, _) => await RefreshReadinessAsync(), Dispatcher);
         panelOpenTimer = NewOneShotTimer(TimeSpan.FromMilliseconds(320), () => { if (IsMouseOver) ShowPetPanel(); });
         panelCloseTimer = NewOneShotTimer(TimeSpan.FromMilliseconds(850), () => { if (!IsMouseOver && !panelLocked) HidePetPanel(peek: true); });
-        reactionTimer = NewOneShotTimer(TimeSpan.FromSeconds(2.6), () => ReactionBubble.Visibility = Visibility.Collapsed);
+        reactionTimer = NewOneShotTimer(TimeSpan.FromSeconds(2.6), () =>
+        {
+            ReactionBubble.Visibility = Visibility.Collapsed;
+            if (panelLocked) ShowPetPanel(); else HidePetPanel(peek: true);
+        });
         discovery.Changed += (_, _) => _ = Dispatcher.InvokeAsync(RefreshReadinessAsync);
         Loaded += OnLoadedAsync;
         Closed += OnClosedAsync;
@@ -145,7 +150,9 @@ public partial class MainWindow : Window
 
     public void ShowPetPanel()
     {
+        SetExpanded(true);
         RestoreFromPeek();
+        ApplyPetPlacement();
         ReactionBubble.Visibility = Visibility.Collapsed;
         PetPanel.Visibility = Visibility.Visible;
         WpfPanel.SetZIndex(PetPanel, 20);
@@ -154,6 +161,8 @@ public partial class MainWindow : Window
     private void HidePetPanel(bool peek)
     {
         PetPanel.Visibility = Visibility.Collapsed;
+        SetExpanded(false);
+        ApplyPetPlacement();
         if (peek && !settings.PetPinned) PeekAtEdge();
     }
 
@@ -175,7 +184,6 @@ public partial class MainWindow : Window
     private void PetSurface_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
         panelCloseTimer.Stop(); RestoreFromPeek();
-        if (!panelLocked && PetPanel.Visibility != Visibility.Visible) panelOpenTimer.Start();
     }
 
     private void PetSurface_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
@@ -202,6 +210,8 @@ public partial class MainWindow : Window
         var easing = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut };
         PetScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
         PetScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
+        ChibiScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
+        ChibiScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
         AddEvent($"桌宠 · {action}"); e.Handled = true;
     }
 
@@ -215,7 +225,7 @@ public partial class MainWindow : Window
     private static bool IsInteractiveSource(DependencyObject? source)
     {
         for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
-            if (current is WpfButton or WpfComboBox || current is FrameworkElement { Name: "HeadTouchZone" or "TailTouchZone" or "HandTouchZone" }) return true;
+            if (current is WpfButton or WpfComboBox || current is FrameworkElement { Name: "HeadTouchZone" or "TailTouchZone" or "HandTouchZone" or "ChibiHeadTouchZone" or "ChibiTailTouchZone" or "ChibiHandTouchZone" }) return true;
         return false;
     }
 
@@ -224,6 +234,7 @@ public partial class MainWindow : Window
         var area = SystemParameters.WorkArea;
         var width = Width * settings.PetScale; var height = Height * settings.PetScale;
         PetScaleTransform.ScaleX = settings.PetScale; PetScaleTransform.ScaleY = settings.PetScale;
+        ChibiScaleTransform.ScaleX = settings.PetScale; ChibiScaleTransform.ScaleY = settings.PetScale;
         switch (settings.PetEdge)
         {
             case PetDockEdge.Left: Left = area.Left; Top = Math.Clamp(area.Top + settings.PetOffset, area.Top, area.Bottom - height); break;
@@ -257,6 +268,17 @@ public partial class MainWindow : Window
     }
 
     private void RestoreFromPeek() { if (!isPeeked) return; isPeeked = false; ApplyPetPlacement(); }
+
+    private void SetExpanded(bool expanded)
+    {
+        if (isExpanded == expanded) return;
+        isExpanded = expanded;
+        Width = expanded ? 350 : 155;
+        Height = expanded ? 460 : 205;
+        AdultPetCharacter.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        ChibiPetCharacter.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        StatusBead.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+    }
 
     private void CreateTrayIcon()
     {

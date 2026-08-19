@@ -31,8 +31,8 @@ public sealed class MainWindowPresentationTests
                 Assert.True(window.AllowsTransparency);
                 Assert.Equal(WindowStyle.None, window.WindowStyle);
                 Assert.False(window.ShowInTaskbar);
-                Assert.InRange(window.Width, 300, 380);
-                Assert.InRange(window.Height, 380, 480);
+                Assert.InRange(window.Width, 140, 180);
+                Assert.InRange(window.Height, 180, 230);
                 Assert.Equal("阵亡看抖音，复活回游戏", Text(window, "FriendlyTitleText"));
                 Assert.Equal("英雄联盟", Text(window, "GameStatusTitleText"));
                 Assert.Equal("抖音", Text(window, "DouyinStatusTitleText"));
@@ -50,8 +50,14 @@ public sealed class MainWindowPresentationTests
                 Assert.NotNull(Assert.IsType<Image>(window.FindName("CatgirlMascotImage")).Source);
                 var petPanel = Assert.IsType<Border>(window.FindName("PetPanel"));
                 Assert.Equal(Visibility.Collapsed, petPanel.Visibility);
+                Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("ChibiPetCharacter")).Visibility);
+                Assert.Equal(Visibility.Collapsed, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
                 window.ShowPetPanel();
                 Assert.Equal(Visibility.Visible, petPanel.Visibility);
+                Assert.Equal(350, window.Width);
+                Assert.Equal(460, window.Height);
+                Assert.Equal(Visibility.Collapsed, Assert.IsType<Grid>(window.FindName("ChibiPetCharacter")).Visibility);
+                Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
                 foreach (var zone in new[] { "HeadTouchZone", "HandTouchZone", "TailTouchZone" })
                     Assert.IsType<Border>(window.FindName(zone));
                 var head = Assert.IsType<Border>(window.FindName("HeadTouchZone"));

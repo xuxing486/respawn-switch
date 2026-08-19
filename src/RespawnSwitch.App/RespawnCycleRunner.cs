@@ -35,7 +35,7 @@ public sealed class RespawnCycleRunner : IAsyncDisposable
         if (!active.TryGetValue(cycleId, out var item)) return;
         item.Cancellation.Cancel();
         try { await item.Task.WaitAsync(timeout).ConfigureAwait(false); }
-        catch (TimeoutException) { active.TryRemove(cycleId, out _); }
+        catch (TimeoutException) { }
     }
 
     public async ValueTask DisposeAsync()

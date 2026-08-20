@@ -40,9 +40,9 @@
             <Image x:Name="BottomDockImage" Visibility="Collapsed" Source="/RespawnSwitch;component/Assets/stress-monster-pet-dock-bottom.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
             <Image x:Name="SideDockImage" Visibility="Collapsed" Source="/RespawnSwitch;component/Assets/stress-monster-pet-dock-side.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><ScaleTransform x:Name="SideDockMirror" ScaleX="1"/></Image.RenderTransform></Image>
             <Grid x:Name="DockInteractionLayer">
-                <Border x:Name="DockHeadTouchZone" Width="78" Height="72" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#01000000" CornerRadius="38" MouseLeftButtonUp="DockHeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
-                <Border x:Name="DockPawTouchZone" Width="72" Height="48" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="DockPawTouchZone_MouseLeftButtonUp" ToolTip="碰小爪"/>
-                <Border x:Name="DockTailTouchZone" Width="54" Height="80" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#01000000" CornerRadius="27" MouseLeftButtonUp="DockTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+                <Border x:Name="DockHeadTouchZone" Width="64" Height="55" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#01000000" CornerRadius="28" ToolTip="摸摸头"/>
+                <Border x:Name="DockPawTouchZone" Width="48" Height="44" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#01000000" CornerRadius="22" ToolTip="碰小爪"/>
+                <Border x:Name="DockTailTouchZone" Width="36" Height="55" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#01000000" CornerRadius="20" ToolTip="碰尾巴"/>
             </Grid>
         </Grid>
         <Border x:Name="ReactionBubble" Visibility="Collapsed" Width="145" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="14" Padding="9,7">

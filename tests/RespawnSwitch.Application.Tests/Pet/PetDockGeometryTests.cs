@@ -7,10 +7,10 @@ namespace RespawnSwitch.Application.Tests.Pet;
 public sealed class PetDockGeometryTests
 {
     [Theory]
-    [InlineData(PetDockEdge.Top, PetSpriteKind.Top, false, 170, 120)]
+    [InlineData(PetDockEdge.Top, PetSpriteKind.Top, false, 170, 108)]
     [InlineData(PetDockEdge.Bottom, PetSpriteKind.Bottom, false, 180, 125)]
-    [InlineData(PetDockEdge.Left, PetSpriteKind.Side, false, 120, 175)]
-    [InlineData(PetDockEdge.Right, PetSpriteKind.Side, true, 120, 175)]
+    [InlineData(PetDockEdge.Left, PetSpriteKind.Side, false, 92, 175)]
+    [InlineData(PetDockEdge.Right, PetSpriteKind.Side, true, 92, 175)]
     public void DockPresentation_uses_three_assets_and_mirrors_only_the_right_side(
         PetDockEdge edge, PetSpriteKind sprite, bool mirror, double width, double height)
     {
@@ -31,7 +31,7 @@ public sealed class PetDockGeometryTests
             PetDockEdge.Top, enterDistance: 24, exitDistance: 48);
 
         Assert.Equal(PetDockEdge.Top, result.Edge);
-        Assert.Equal(new PixelRect(535, 0, 705, 120), result.Bounds);
+        Assert.Equal(new PixelRect(535, 0, 705, 108), result.Bounds);
     }
 
     [Fact]
@@ -56,7 +56,27 @@ public sealed class PetDockGeometryTests
         Assert.Equal(PetDockEdge.Left, result.Edge);
         Assert.Equal(PetSpriteKind.Side, result.Sprite);
         Assert.False(result.Mirror);
-        Assert.Equal(new PixelRect(0, 343, 120, 518), result.Bounds);
+        Assert.Equal(new PixelRect(0, 343, 92, 518), result.Bounds);
+    }
+
+    [Fact]
+    public void Docked_drag_keeps_the_pointer_grab_point_instead_of_jumping_to_center()
+    {
+        var result = PetEdgeDragGeometry.Update(
+            new PixelRect(0, 0, 1000, 800), pointerX: 620, pointerY: 12,
+            PetDockEdge.Top, enterDistance: 24, exitDistance: 48,
+            grabOffsetX: 20, grabOffsetY: 40);
+
+        Assert.Equal(new PixelRect(600, 0, 770, 108), result.Bounds);
+    }
+
+    [Theory]
+    [InlineData(100, 100, 103, 104, false)]
+    [InlineData(100, 100, 106, 100, true)]
+    public void Pointer_gesture_does_not_turn_a_tap_into_a_drag(
+        int startX, int startY, int currentX, int currentY, bool expected)
+    {
+        Assert.Equal(expected, PetPointerGesture.HasMoved(startX, startY, currentX, currentY, threshold: 6));
     }
 
     [Theory]

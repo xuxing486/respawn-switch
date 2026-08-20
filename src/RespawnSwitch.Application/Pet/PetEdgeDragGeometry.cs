@@ -17,8 +17,8 @@ public static class PetEdgeDragGeometry
         PetDockEdge? currentEdge,
         int enterDistance,
         int exitDistance,
-        int freeOffsetX = FreeWidth / 2,
-        int freeOffsetY = FreeHeight / 2)
+        int grabOffsetX = -1,
+        int grabOffsetY = -1)
     {
         var edge = currentEdge;
         if (edge is { } docked && HasLeftEdge(workArea, pointerX, pointerY, docked, exitDistance))
@@ -31,23 +31,27 @@ public static class PetEdgeDragGeometry
             var pose = PetDockPresentation.For(target);
             var width = (int)pose.Width;
             var height = (int)pose.Height;
+            var dockGrabX = grabOffsetX < 0 ? width / 2 : Math.Clamp(grabOffsetX, 0, width);
+            var dockGrabY = grabOffsetY < 0 ? height / 2 : Math.Clamp(grabOffsetY, 0, height);
             var left = target switch
             {
                 PetDockEdge.Left => workArea.Left,
                 PetDockEdge.Right => workArea.Right - width,
-                _ => Math.Clamp(pointerX - width / 2, workArea.Left, workArea.Right - width)
+                _ => Math.Clamp(pointerX - dockGrabX, workArea.Left, workArea.Right - width)
             };
             var top = target switch
             {
                 PetDockEdge.Top => workArea.Top,
                 PetDockEdge.Bottom => workArea.Bottom - height,
-                _ => Math.Clamp(pointerY - height / 2, workArea.Top, workArea.Bottom - height)
+                _ => Math.Clamp(pointerY - dockGrabY, workArea.Top, workArea.Bottom - height)
             };
             return new(new PixelRect(left, top, left + width, top + height), target, pose.Sprite, pose.Mirror);
         }
 
-        var freeLeft = Math.Clamp(pointerX - freeOffsetX, workArea.Left, workArea.Right - FreeWidth);
-        var freeTop = Math.Clamp(pointerY - freeOffsetY, workArea.Top, workArea.Bottom - FreeHeight);
+        var freeGrabX = grabOffsetX < 0 ? FreeWidth / 2 : Math.Clamp(grabOffsetX, 0, FreeWidth);
+        var freeGrabY = grabOffsetY < 0 ? FreeHeight / 2 : Math.Clamp(grabOffsetY, 0, FreeHeight);
+        var freeLeft = Math.Clamp(pointerX - freeGrabX, workArea.Left, workArea.Right - FreeWidth);
+        var freeTop = Math.Clamp(pointerY - freeGrabY, workArea.Top, workArea.Bottom - FreeHeight);
         return new(new PixelRect(freeLeft, freeTop, freeLeft + FreeWidth, freeTop + FreeHeight), null, PetSpriteKind.Free, false);
     }
 

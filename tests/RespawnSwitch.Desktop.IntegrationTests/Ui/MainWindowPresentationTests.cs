@@ -5,6 +5,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
+using System.Reflection;
+using RespawnSwitch.Application.Pet;
 using RespawnSwitch.App;
 
 namespace RespawnSwitch.Desktop.IntegrationTests.Ui;
@@ -74,7 +77,29 @@ public sealed class MainWindowPresentationTests
                 foreach (var imageName in new[] { "TopDockImage", "BottomDockImage", "SideDockImage" })
                     Assert.True(Assert.IsType<Image>(window.FindName(imageName)).Source is not null, imageName);
                 foreach (var zoneName in new[] { "DockHeadTouchZone", "DockPawTouchZone", "DockTailTouchZone" })
-                    Assert.IsType<Border>(window.FindName(zoneName));
+                {
+                    var zone = Assert.IsType<Border>(window.FindName(zoneName));
+                    var method = typeof(MainWindow).GetMethod("IsInteractiveSource", BindingFlags.NonPublic | BindingFlags.Static);
+                    Assert.NotNull(method);
+                    Assert.False(Assert.IsType<bool>(method.Invoke(null, [zone])));
+                }
+                AssertDockAssetTouchesEdge(Assert.IsType<Image>(window.FindName("TopDockImage")), PetDockPresentation.For(PetDockEdge.Top), PetDockEdge.Top);
+                AssertDockAssetTouchesEdge(Assert.IsType<Image>(window.FindName("BottomDockImage")), PetDockPresentation.For(PetDockEdge.Bottom), PetDockEdge.Bottom);
+                AssertDockAssetTouchesEdge(Assert.IsType<Image>(window.FindName("SideDockImage")), PetDockPresentation.For(PetDockEdge.Left), PetDockEdge.Left);
+                window.Width = PetDockPresentation.For(PetDockEdge.Left).Width;
+                var react = typeof(MainWindow).GetMethod("React", BindingFlags.Instance | BindingFlags.NonPublic, null,
+                    [typeof(string), typeof(string), typeof(double), typeof(bool)], null);
+                Assert.NotNull(react);
+                react.Invoke(window, ["贴边交互", "贴在这里也能摸到我，嘿嘿 ♥", 1.045, false]);
+                var reaction = Assert.IsType<Border>(window.FindName("ReactionBubble"));
+                Assert.True(reaction.Width <= window.Width - 4, "The dock reaction bubble must fit inside the narrow side window.");
+                var showDock = typeof(MainWindow).GetMethod("ShowDockSprite", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.NotNull(showDock);
+                var dockScale = Assert.IsType<ScaleTransform>(window.FindName("DockScaleTransform"));
+                showDock.Invoke(window, [PetDockEdge.Left]); Assert.Equal(0, dockScale.CenterX);
+                showDock.Invoke(window, [PetDockEdge.Right]); Assert.Equal(PetDockPresentation.For(PetDockEdge.Right).Width, dockScale.CenterX);
+                showDock.Invoke(window, [PetDockEdge.Top]); Assert.Equal(0, dockScale.CenterY);
+                showDock.Invoke(window, [PetDockEdge.Bottom]); Assert.Equal(PetDockPresentation.For(PetDockEdge.Bottom).Height, dockScale.CenterY);
             }
             catch (Exception exception) { failure = exception; }
             finally
@@ -90,4 +115,36 @@ public sealed class MainWindowPresentationTests
     }
 
     private static string Text(MainWindow window, string name) => Assert.IsType<TextBlock>(window.FindName(name)).Text;
+
+    private static void AssertDockAssetTouchesEdge(Image image, PetDockPose pose, PetDockEdge edge)
+    {
+        var source = Assert.IsAssignableFrom<BitmapSource>(image.Source);
+        var converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+        var stride = converted.PixelWidth * 4;
+        var pixels = new byte[stride * converted.PixelHeight];
+        converted.CopyPixels(pixels, stride, 0);
+        var minX = converted.PixelWidth;
+        var minY = converted.PixelHeight;
+        var maxX = -1;
+        var maxY = -1;
+        for (var y = 0; y < converted.PixelHeight; y++)
+        for (var x = 0; x < converted.PixelWidth; x++)
+        {
+            if (pixels[y * stride + x * 4 + 3] <= 8) continue;
+            minX = Math.Min(minX, x); minY = Math.Min(minY, y);
+            maxX = Math.Max(maxX, x); maxY = Math.Max(maxY, y);
+        }
+        var scale = Math.Min(pose.Width / converted.PixelWidth, pose.Height / converted.PixelHeight);
+        var horizontalInset = (pose.Width - converted.PixelWidth * scale) / 2;
+        var verticalInset = (pose.Height - converted.PixelHeight * scale) / 2;
+        var gap = edge switch
+        {
+            PetDockEdge.Left => horizontalInset + minX * scale,
+            PetDockEdge.Right => horizontalInset + (converted.PixelWidth - 1 - maxX) * scale,
+            PetDockEdge.Top => verticalInset + minY * scale,
+            PetDockEdge.Bottom => verticalInset + (converted.PixelHeight - 1 - maxY) * scale,
+            _ => double.MaxValue
+        };
+        Assert.True(gap <= 1, $"{edge} sprite leaves a {gap:F1}px visual gap from the screen edge.");
+    }
 }

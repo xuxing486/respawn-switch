@@ -43,10 +43,15 @@ public partial class MainWindow : Window
     private bool panelLocked;
     private bool isExpanded;
     private bool isDragging;
+    private bool petDragMoved;
+    private System.Windows.Point petDragStart;
+    private DockTouchAction? pendingDockTouch;
     private PetDockEdge? activeDockEdge;
     private int freeDragOffsetX = (int)(CompactWidth / 2);
     private int freeDragOffsetY = (int)(CompactHeight / 2);
     private System.Windows.Forms.NotifyIcon? trayIcon;
+
+    private enum DockTouchAction { Head, Paw, Tail }
 
     public MainWindow()
     {
@@ -200,6 +205,7 @@ public partial class MainWindow : Window
     private void PetSurface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2) { panelLocked = true; ShowPetPanel(); e.Handled = true; return; }
+        pendingDockTouch = DockTouchFromSource(e.OriginalSource as DependencyObject);
         if (IsInteractiveSource(e.OriginalSource as DependencyObject)) return;
         if (isExpanded)
         {
@@ -207,11 +213,12 @@ public partial class MainWindow : Window
             return;
         }
         var offset = e.GetPosition(this);
-        freeDragOffsetX = activeDockEdge is null ? (int)Math.Round(offset.X) : (int)(CompactWidth / 2);
-        freeDragOffsetY = activeDockEdge is null ? (int)Math.Round(offset.Y) : (int)(CompactHeight / 2);
+        freeDragOffsetX = (int)Math.Round(offset.X);
+        freeDragOffsetY = (int)Math.Round(offset.Y);
+        petDragStart = GetCursorInDips();
+        petDragMoved = false;
         isDragging = true;
         CaptureMouse();
-        UpdatePetDrag();
         e.Handled = true;
     }
 
@@ -219,14 +226,29 @@ public partial class MainWindow : Window
     {
         if (!isDragging) return;
         if (e.LeftButton != MouseButtonState.Pressed) { StopPetDrag(); return; }
-        UpdatePetDrag();
+        var cursor = GetCursorInDips();
+        if (!petDragMoved)
+        {
+            petDragMoved = PetPointerGesture.HasMoved(
+                (int)Math.Round(petDragStart.X), (int)Math.Round(petDragStart.Y),
+                (int)Math.Round(cursor.X), (int)Math.Round(cursor.Y), threshold: 6);
+            if (!petDragMoved) return;
+        }
+        UpdatePetDrag(cursor);
         e.Handled = true;
     }
 
     private async void PetSurface_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (!isDragging) return;
+        var touch = !petDragMoved ? pendingDockTouch : null;
         StopPetDrag();
+        if (touch is { } action)
+        {
+            ReactDock(action);
+            e.Handled = true;
+            return;
+        }
         if (activeDockEdge is { } edge)
         {
             var area = SystemParameters.WorkArea;
@@ -237,14 +259,25 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void PetSurface_LostMouseCapture(object sender, System.Windows.Input.MouseEventArgs e) => isDragging = false;
+    private void PetSurface_LostMouseCapture(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        isDragging = false;
+        petDragMoved = false;
+        pendingDockTouch = null;
+    }
 
     private void ChibiHeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("摸头", "嗯…这里很舒服，再摸一下嘛 ♥", 1.045, false, e);
     private void ChibiTailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("尾巴", "呀！尾巴很敏感的…别突然碰啦。", 0.955, false, e);
     private void ChibiHandTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("击掌", "啪！今天这局也交给我吧。", 1.075, false, e);
-    private void DockHeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("贴边摸头", "贴在这里也能摸到我，嘿嘿 ♥", 1.045, false, e);
-    private void DockPawTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("碰小爪", "抓得很稳哦，不会掉下去的！", 1.065, false, e);
-    private void DockTailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("贴边尾巴", "呀，扒着边的时候别挠尾巴啦。", 0.96, false, e);
+    private void ReactDock(DockTouchAction action)
+    {
+        switch (action)
+        {
+            case DockTouchAction.Head: React("贴边摸头", "贴在这里也能摸到我，嘿嘿 ♥", 1.045, false); break;
+            case DockTouchAction.Paw: React("碰小爪", "抓得很稳哦，不会掉下去的！", 1.065, false); break;
+            case DockTouchAction.Tail: React("贴边尾巴", "呀，扒着边的时候别挠尾巴啦。", 0.96, false); break;
+        }
+    }
 
     private void AdultHeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("轻抚", "嗯…只有你能这样温柔地碰我。", 1.035, true, e);
     private void AdultTailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("尾巴", "尾巴很敏感…再逗我，我可要记住了。", 0.97, true, e);
@@ -252,8 +285,14 @@ public partial class MainWindow : Window
 
     private void React(string action, string text, double scale, bool adult, MouseButtonEventArgs e)
     {
+        React(action, text, scale, adult);
+        e.Handled = true;
+    }
+
+    private void React(string action, string text, double scale, bool adult)
+    {
         panelOpenTimer.Stop(); panelCloseTimer.Stop(); PetPanel.Visibility = Visibility.Collapsed;
-        ReactionBubble.Width = adult ? 185 : 145;
+        ReactionBubble.Width = adult ? 185 : Math.Min(145, Math.Max(76, Width - 4));
         ReactionBubble.HorizontalAlignment = adult ? System.Windows.HorizontalAlignment.Left : System.Windows.HorizontalAlignment.Center;
         ReactionBubble.VerticalAlignment = adult ? System.Windows.VerticalAlignment.Bottom : System.Windows.VerticalAlignment.Top;
         ReactionBubble.Margin = adult ? new Thickness(5, 0, 0, 15) : new Thickness(0, 2, 0, 0);
@@ -266,7 +305,7 @@ public partial class MainWindow : Window
         ChibiScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
         DockScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
         DockScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, scale, TimeSpan.FromMilliseconds(170)) { AutoReverse = true, EasingFunction = easing });
-        AddEvent($"桌宠 · {action}"); e.Handled = true;
+        AddEvent($"桌宠 · {action}");
     }
 
     private DispatcherTimer NewOneShotTimer(TimeSpan interval, Action action)
@@ -279,8 +318,20 @@ public partial class MainWindow : Window
     private static bool IsInteractiveSource(DependencyObject? source)
     {
         for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
-            if (current is WpfButton or WpfComboBox || current is FrameworkElement { Name: "HeadTouchZone" or "TailTouchZone" or "HandTouchZone" or "ChibiHeadTouchZone" or "ChibiTailTouchZone" or "ChibiHandTouchZone" or "DockHeadTouchZone" or "DockPawTouchZone" or "DockTailTouchZone" }) return true;
+            if (current is WpfButton or WpfComboBox || current is FrameworkElement { Name: "HeadTouchZone" or "TailTouchZone" or "HandTouchZone" or "ChibiHeadTouchZone" or "ChibiTailTouchZone" or "ChibiHandTouchZone" }) return true;
         return false;
+    }
+
+    private static DockTouchAction? DockTouchFromSource(DependencyObject? source)
+    {
+        for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is not FrameworkElement element) continue;
+            if (element.Name == "DockHeadTouchZone") return DockTouchAction.Head;
+            if (element.Name == "DockPawTouchZone") return DockTouchAction.Paw;
+            if (element.Name == "DockTailTouchZone") return DockTouchAction.Tail;
+        }
+        return null;
     }
 
     private void ApplyPetPlacement()
@@ -308,22 +359,16 @@ public partial class MainWindow : Window
         ShowDockSprite(settings.PetEdge);
     }
 
-    private void UpdatePetDrag()
+    private void UpdatePetDrag(System.Windows.Point? cursorPoint = null)
     {
-        var cursor = GetCursorInDips();
+        var cursor = cursorPoint ?? GetCursorInDips();
         var area = SystemParameters.WorkArea;
         var result = PetEdgeDragGeometry.Update(
             new((int)area.Left, (int)area.Top, (int)area.Right, (int)area.Bottom),
             (int)Math.Round(cursor.X), (int)Math.Round(cursor.Y), activeDockEdge,
             enterDistance: 24, exitDistance: 48,
-            freeOffsetX: freeDragOffsetX, freeOffsetY: freeDragOffsetY);
-        var previousEdge = activeDockEdge;
+            grabOffsetX: freeDragOffsetX, grabOffsetY: freeDragOffsetY);
         activeDockEdge = result.Edge;
-        if (previousEdge is null && activeDockEdge is not null)
-        {
-            freeDragOffsetX = (int)(CompactWidth / 2);
-            freeDragOffsetY = (int)(CompactHeight / 2);
-        }
         SetWindowBounds(result.Bounds.Left, result.Bounds.Top, result.Bounds.Width, result.Bounds.Height);
         if (result.Edge is { } edge) ShowDockSprite(edge); else ShowFreeChibi();
     }
@@ -340,6 +385,8 @@ public partial class MainWindow : Window
     {
         isDragging = false;
         if (IsMouseCaptured) ReleaseMouseCapture();
+        petDragMoved = false;
+        pendingDockTouch = null;
     }
 
     private void ShowDockSprite(PetDockEdge edge)
@@ -352,6 +399,18 @@ public partial class MainWindow : Window
         BottomDockImage.Visibility = pose.Sprite == PetSpriteKind.Bottom ? Visibility.Visible : Visibility.Collapsed;
         SideDockImage.Visibility = pose.Sprite == PetSpriteKind.Side ? Visibility.Visible : Visibility.Collapsed;
         SideDockMirror.ScaleX = pose.Mirror ? -1 : 1;
+        DockScaleTransform.CenterX = edge switch
+        {
+            PetDockEdge.Left => 0,
+            PetDockEdge.Right => pose.Width,
+            _ => pose.Width / 2
+        };
+        DockScaleTransform.CenterY = edge switch
+        {
+            PetDockEdge.Top => 0,
+            PetDockEdge.Bottom => pose.Height,
+            _ => pose.Height / 2
+        };
         StatusBead.Visibility = Visibility.Collapsed;
     }
 

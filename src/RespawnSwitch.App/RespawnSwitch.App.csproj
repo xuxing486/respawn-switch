@@ -39,6 +39,9 @@
     <Resource Include="Assets\stress-monster-pet-idle.png" />
     <Resource Include="Assets\stress-monster-pet-blink.png" />
     <Resource Include="Assets\stress-monster-pet-chibi.png" />
+    <Resource Include="Assets\stress-monster-pet-dock-top.png" />
+    <Resource Include="Assets\stress-monster-pet-dock-bottom.png" />
+    <Resource Include="Assets\stress-monster-pet-dock-side.png" />
   </ItemGroup>
 
 </Project>

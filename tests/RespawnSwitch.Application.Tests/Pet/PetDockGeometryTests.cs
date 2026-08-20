@@ -7,23 +7,56 @@ namespace RespawnSwitch.Application.Tests.Pet;
 public sealed class PetDockGeometryTests
 {
     [Theory]
-    [InlineData(PetDockEdge.Top, 154, 103, 0, -2, 0, false)]
-    [InlineData(PetDockEdge.Bottom, 164, 112, 0, -28, 0, true)]
-    [InlineData(PetDockEdge.Left, 100, 158, -24, -10, 4, false)]
-    [InlineData(PetDockEdge.Right, 100, 158, 24, -10, -4, false)]
-    public void DockPresentation_gives_each_edge_a_distinct_compact_pose(
-        PetDockEdge edge, double width, double height, double translateX, double translateY,
-        double rotation, bool showGrip)
+    [InlineData(PetDockEdge.Top, PetSpriteKind.Top, false, 170, 120)]
+    [InlineData(PetDockEdge.Bottom, PetSpriteKind.Bottom, false, 180, 125)]
+    [InlineData(PetDockEdge.Left, PetSpriteKind.Side, false, 120, 175)]
+    [InlineData(PetDockEdge.Right, PetSpriteKind.Side, true, 120, 175)]
+    public void DockPresentation_uses_three_assets_and_mirrors_only_the_right_side(
+        PetDockEdge edge, PetSpriteKind sprite, bool mirror, double width, double height)
     {
         var pose = PetDockPresentation.For(edge);
 
+        Assert.Equal(sprite, pose.Sprite);
+        Assert.Equal(mirror, pose.Mirror);
         Assert.Equal(width, pose.Width);
         Assert.Equal(height, pose.Height);
-        Assert.Equal(translateX, pose.TranslateX);
-        Assert.Equal(translateY, pose.TranslateY);
-        Assert.Equal(rotation, pose.Rotation);
-        Assert.Equal(showGrip, pose.ShowGrip);
-        Assert.InRange(pose.SnapDuration.TotalMilliseconds, 180, 260);
+        Assert.Equal(TimeSpan.Zero, pose.SnapDuration);
+    }
+
+    [Fact]
+    public void Edge_drag_slides_along_the_top_without_leaving_the_edge()
+    {
+        var result = PetEdgeDragGeometry.Update(
+            new PixelRect(0, 0, 1000, 800), pointerX: 620, pointerY: 12,
+            PetDockEdge.Top, enterDistance: 24, exitDistance: 48);
+
+        Assert.Equal(PetDockEdge.Top, result.Edge);
+        Assert.Equal(new PixelRect(535, 0, 705, 120), result.Bounds);
+    }
+
+    [Fact]
+    public void Edge_drag_returns_to_free_chibi_after_pointer_leaves_the_edge()
+    {
+        var result = PetEdgeDragGeometry.Update(
+            new PixelRect(0, 0, 1000, 800), pointerX: 620, pointerY: 90,
+            PetDockEdge.Top, enterDistance: 24, exitDistance: 48);
+
+        Assert.Null(result.Edge);
+        Assert.Equal(PetSpriteKind.Free, result.Sprite);
+        Assert.Equal(new PixelRect(543, 0, 698, 205), result.Bounds);
+    }
+
+    [Fact]
+    public void Free_drag_switches_to_side_asset_at_the_left_edge()
+    {
+        var result = PetEdgeDragGeometry.Update(
+            new PixelRect(0, 0, 1000, 800), pointerX: 10, pointerY: 430,
+            currentEdge: null, enterDistance: 24, exitDistance: 48);
+
+        Assert.Equal(PetDockEdge.Left, result.Edge);
+        Assert.Equal(PetSpriteKind.Side, result.Sprite);
+        Assert.False(result.Mirror);
+        Assert.Equal(new PixelRect(0, 343, 120, 518), result.Bounds);
     }
 
     [Theory]

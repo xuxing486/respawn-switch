@@ -71,7 +71,10 @@ public sealed class MainWindowPresentationTests
                 Assert.Contains("只有你", Text(window, "ReactionText"));
                 Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
                 Assert.Equal(Visibility.Collapsed, petPanel.Visibility);
-                Assert.IsType<Grid>(window.FindName("DockGrip"));
+                foreach (var imageName in new[] { "TopDockImage", "BottomDockImage", "SideDockImage" })
+                    Assert.True(Assert.IsType<Image>(window.FindName(imageName)).Source is not null, imageName);
+                foreach (var zoneName in new[] { "DockHeadTouchZone", "DockPawTouchZone", "DockTailTouchZone" })
+                    Assert.IsType<Border>(window.FindName(zoneName));
             }
             catch (Exception exception) { failure = exception; }
             finally

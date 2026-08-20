@@ -6,7 +6,8 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True" WindowStartupLocation="Manual"
         FontFamily="Segoe UI, Microsoft YaHei UI" MouseEnter="PetSurface_MouseEnter"
-        MouseLeave="PetSurface_MouseLeave" MouseLeftButtonDown="PetSurface_MouseLeftButtonDown">
+        MouseLeave="PetSurface_MouseLeave" MouseLeftButtonDown="PetSurface_MouseLeftButtonDown"
+        MouseMove="PetSurface_MouseMove" MouseLeftButtonUp="PetSurface_MouseLeftButtonUp" LostMouseCapture="PetSurface_LostMouseCapture">
     <Window.Resources>
         <SolidColorBrush x:Key="PetMint" Color="#74E0C0"/><SolidColorBrush x:Key="PetPink" Color="#F3A0B9"/>
         <Style x:Key="PetAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="FontSize" Value="11"/><Setter Property="Padding" Value="10,7"/></Style>
@@ -27,16 +28,22 @@
             <Border x:Name="TailTouchZone" Width="59" Height="143" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,38,0,0" Background="#01000000" CornerRadius="34" MouseLeftButtonUp="AdultTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
         </Grid>
         <Grid x:Name="ChibiPetCharacter" Width="150" Height="190" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="ChibiScaleTransform" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><ScaleTransform x:Name="ChibiPoseScale" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><RotateTransform x:Name="ChibiPoseRotate" CenterX="75" CenterY="105"/><TranslateTransform Y="-2"/><TranslateTransform x:Name="ChibiDockTranslate"/></TransformGroup></Grid.RenderTransform>
+            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="ChibiScaleTransform" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><TranslateTransform Y="-2"/></TransformGroup></Grid.RenderTransform>
             <Image x:Name="ChibiMascotImage" Source="Assets/stress-monster-pet-chibi.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
             <Border x:Name="ChibiHeadTouchZone" Width="94" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-7,5,0,0" Background="#01000000" CornerRadius="42" MouseLeftButtonUp="ChibiHeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
             <Border x:Name="ChibiHandTouchZone" Width="48" Height="55" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,-5,0,0" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="ChibiHandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
             <Border x:Name="ChibiTailTouchZone" Width="52" Height="90" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,22,0,0" Background="#01000000" CornerRadius="26" MouseLeftButtonUp="ChibiTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
         </Grid>
-        <Grid x:Name="DockGrip" Visibility="Collapsed" Width="94" Height="18" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,3" IsHitTestVisible="False">
-            <Border Height="7" VerticalAlignment="Bottom" Background="#D94F465F" BorderBrush="#D8F3A0B9" BorderThickness="1" CornerRadius="4"/>
-            <Ellipse Width="18" Height="12" Fill="#FFF4E6EC" HorizontalAlignment="Left" Margin="15,0,0,3"/>
-            <Ellipse Width="18" Height="12" Fill="#FFF4E6EC" HorizontalAlignment="Right" Margin="0,0,15,3"/>
+        <Grid x:Name="DockPetCharacter" Visibility="Collapsed">
+            <Grid.RenderTransform><ScaleTransform x:Name="DockScaleTransform" ScaleX="1" ScaleY="1" CenterX="80" CenterY="70"/></Grid.RenderTransform>
+            <Image x:Name="TopDockImage" Visibility="Collapsed" Source="/RespawnSwitch;component/Assets/stress-monster-pet-dock-top.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Image x:Name="BottomDockImage" Visibility="Collapsed" Source="/RespawnSwitch;component/Assets/stress-monster-pet-dock-bottom.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Image x:Name="SideDockImage" Visibility="Collapsed" Source="/RespawnSwitch;component/Assets/stress-monster-pet-dock-side.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><ScaleTransform x:Name="SideDockMirror" ScaleX="1"/></Image.RenderTransform></Image>
+            <Grid x:Name="DockInteractionLayer">
+                <Border x:Name="DockHeadTouchZone" Width="78" Height="72" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#01000000" CornerRadius="38" MouseLeftButtonUp="DockHeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
+                <Border x:Name="DockPawTouchZone" Width="72" Height="48" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="DockPawTouchZone_MouseLeftButtonUp" ToolTip="碰小爪"/>
+                <Border x:Name="DockTailTouchZone" Width="54" Height="80" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#01000000" CornerRadius="27" MouseLeftButtonUp="DockTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+            </Grid>
         </Grid>
         <Border x:Name="ReactionBubble" Visibility="Collapsed" Width="145" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="14" Padding="9,7">
             <TextBlock x:Name="ReactionText" Text="今天也要顺利开黑喵。" Foreground="#FFF8FC" FontSize="12" TextWrapping="Wrap"/>

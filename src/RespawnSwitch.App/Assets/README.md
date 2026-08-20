@@ -1,4 +1,7 @@
 <!-- Author: Stress Monster -->
+
+`stress-monster-pet-dock-top.png`、`stress-monster-pet-dock-bottom.png` 与
+`stress-monster-pet-dock-side.png` 是以同一 Q 版角色为参考生成的透明贴边姿态；右侧使用 side 素材镜像。
 # RespawnSwitch desktop pet assets
 
 `stress-monster-pet-idle.png` and `stress-monster-pet-blink.png` are original project assets generated for RespawnSwitch on 2026-08-19 with the built-in OpenAI image generation tool. They use a transparent alpha canvas and are not based on a named character.

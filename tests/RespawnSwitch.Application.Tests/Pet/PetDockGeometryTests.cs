@@ -7,6 +7,26 @@ namespace RespawnSwitch.Application.Tests.Pet;
 public sealed class PetDockGeometryTests
 {
     [Theory]
+    [InlineData(PetDockEdge.Top, 154, 103, 0, -2, 0, false)]
+    [InlineData(PetDockEdge.Bottom, 164, 112, 0, -28, 0, true)]
+    [InlineData(PetDockEdge.Left, 100, 158, -24, -10, 4, false)]
+    [InlineData(PetDockEdge.Right, 100, 158, 24, -10, -4, false)]
+    public void DockPresentation_gives_each_edge_a_distinct_compact_pose(
+        PetDockEdge edge, double width, double height, double translateX, double translateY,
+        double rotation, bool showGrip)
+    {
+        var pose = PetDockPresentation.For(edge);
+
+        Assert.Equal(width, pose.Width);
+        Assert.Equal(height, pose.Height);
+        Assert.Equal(translateX, pose.TranslateX);
+        Assert.Equal(translateY, pose.TranslateY);
+        Assert.Equal(rotation, pose.Rotation);
+        Assert.Equal(showGrip, pose.ShowGrip);
+        Assert.InRange(pose.SnapDuration.TotalMilliseconds, 180, 260);
+    }
+
+    [Theory]
     [InlineData(4, 200, 104, 300, PetDockEdge.Left, 0, 200, 100, 300)]
     [InlineData(896, 200, 996, 300, PetDockEdge.Right, 900, 200, 1000, 300)]
     [InlineData(400, 3, 500, 103, PetDockEdge.Top, 400, 0, 500, 100)]

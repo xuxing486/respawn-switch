@@ -24,6 +24,10 @@ namespace RespawnSwitch.App;
 
 public partial class MainWindow : Window
 {
+    private const double CompactWidth = 155;
+    private const double CompactHeight = 205;
+    private const double ExpandedWidth = 420;
+    private const double ExpandedHeight = 390;
     private readonly RespawnOverlayWindow overlay = new();
     private readonly DouyinDiscoveryController discovery = new(new WindowsDouyinInstallationDetector());
     private readonly LeagueClientPresenceProbe leagueClient = new(new NativeWindowSnapshotSource(), new ToolhelpProcessSnapshot());
@@ -151,7 +155,6 @@ public partial class MainWindow : Window
     public void ShowPetPanel()
     {
         SetExpanded(true);
-        RestoreFromPeek();
         ApplyPetPlacement();
         ReactionBubble.Visibility = Visibility.Collapsed;
         PetPanel.Visibility = Visibility.Visible;
@@ -198,13 +201,21 @@ public partial class MainWindow : Window
         try { DragMove(); DockToNearestEdge(); } catch (InvalidOperationException) { }
     }
 
-    private void HeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("摸头", "嗯…这里很舒服，再摸一下嘛 ♥", 1.045, e);
-    private void TailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("尾巴", "呀！尾巴很敏感的…别突然碰啦。", 0.955, e);
-    private void HandTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("击掌", "啪！今天这局也交给我吧。", 1.075, e);
+    private void ChibiHeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("摸头", "嗯…这里很舒服，再摸一下嘛 ♥", 1.045, false, e);
+    private void ChibiTailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("尾巴", "呀！尾巴很敏感的…别突然碰啦。", 0.955, false, e);
+    private void ChibiHandTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("击掌", "啪！今天这局也交给我吧。", 1.075, false, e);
 
-    private void React(string action, string text, double scale, MouseButtonEventArgs e)
+    private void AdultHeadTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("轻抚", "嗯…只有你能这样温柔地碰我。", 1.035, true, e);
+    private void AdultTailTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("尾巴", "尾巴很敏感…再逗我，我可要记住了。", 0.97, true, e);
+    private void AdultHandTouchZone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => React("牵手", "手给你了，这局结束前不许松开。", 1.055, true, e);
+
+    private void React(string action, string text, double scale, bool adult, MouseButtonEventArgs e)
     {
         panelOpenTimer.Stop(); panelCloseTimer.Stop(); PetPanel.Visibility = Visibility.Collapsed;
+        ReactionBubble.Width = adult ? 185 : 145;
+        ReactionBubble.HorizontalAlignment = adult ? System.Windows.HorizontalAlignment.Left : System.Windows.HorizontalAlignment.Center;
+        ReactionBubble.VerticalAlignment = adult ? System.Windows.VerticalAlignment.Bottom : System.Windows.VerticalAlignment.Top;
+        ReactionBubble.Margin = adult ? new Thickness(5, 0, 0, 15) : new Thickness(0, 2, 0, 0);
         ReactionText.Text = text; ReactionBubble.Visibility = Visibility.Visible; WpfPanel.SetZIndex(ReactionBubble, 30);
         reactionTimer.Stop(); reactionTimer.Start();
         var easing = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut };
@@ -231,8 +242,9 @@ public partial class MainWindow : Window
 
     private void ApplyPetPlacement()
     {
+        ClearWindowMotion();
         var area = SystemParameters.WorkArea;
-        var width = Width * settings.PetScale; var height = Height * settings.PetScale;
+        var width = Width; var height = Height;
         PetScaleTransform.ScaleX = settings.PetScale; PetScaleTransform.ScaleY = settings.PetScale;
         ChibiScaleTransform.ScaleX = settings.PetScale; ChibiScaleTransform.ScaleY = settings.PetScale;
         switch (settings.PetEdge)
@@ -250,31 +262,134 @@ public partial class MainWindow : Window
         var result = PetDockGeometry.Snap(
             new((int)area.Left, (int)area.Top, (int)area.Right, (int)area.Bottom),
             new((int)Left, (int)Top, (int)(Left + ActualWidth), (int)(Top + ActualHeight)), 28);
-        Left = result.Bounds.Left; Top = result.Bounds.Top;
         if (result.Edge is { } edge)
         {
             settings = settings with { PetEdge = edge, PetOffset = result.Offset };
             await AppSettingsStore.SaveAsync(settings);
+            ApplyDockPresentation(edge, animate: true);
+        }
+        else
+        {
+            RestoreFreeCompact(result.Bounds.Left, result.Bounds.Top, animate: true);
         }
     }
 
     private void PeekAtEdge()
     {
         if (isPeeked) return;
-        var area = SystemParameters.WorkArea; const double strip = 46;
-        if (settings.PetEdge == PetDockEdge.Right) Left = area.Right - strip;
-        else if (settings.PetEdge == PetDockEdge.Left) Left = area.Left - Width + strip;
-        isPeeked = true;
+        ApplyDockPresentation(settings.PetEdge, animate: true);
     }
 
-    private void RestoreFromPeek() { if (!isPeeked) return; isPeeked = false; ApplyPetPlacement(); }
+    private void RestoreFromPeek()
+    {
+        if (!isPeeked) return;
+        isPeeked = false;
+        DockGrip.Visibility = Visibility.Collapsed;
+        StatusBead.Visibility = Visibility.Visible;
+        ResetChibiPose();
+        var target = AnchoredBounds(CompactWidth, CompactHeight, settings.PetEdge, settings.PetOffset);
+        AnimateWindowTo(target.Left, target.Top, target.Width, target.Height, TimeSpan.FromMilliseconds(180));
+    }
+
+    internal void ApplyDockPresentation(PetDockEdge edge, bool animate)
+    {
+        var pose = PetDockPresentation.For(edge);
+        isPeeked = true;
+        ChibiPoseScale.ScaleX = pose.Scale;
+        ChibiPoseScale.ScaleY = pose.Scale;
+        ChibiPoseRotate.Angle = pose.Rotation;
+        ChibiDockTranslate.X = pose.TranslateX;
+        ChibiDockTranslate.Y = pose.TranslateY;
+        DockGrip.Visibility = pose.ShowGrip ? Visibility.Visible : Visibility.Collapsed;
+        StatusBead.Visibility = Visibility.Collapsed;
+        var target = AnchoredBounds(pose.Width, pose.Height, edge, settings.PetOffset);
+        if (animate) AnimateWindowTo(target.Left, target.Top, target.Width, target.Height, pose.SnapDuration);
+        else SetWindowBounds(target.Left, target.Top, target.Width, target.Height);
+    }
+
+    private void RestoreFreeCompact(double left, double top, bool animate)
+    {
+        isPeeked = false;
+        DockGrip.Visibility = Visibility.Collapsed;
+        StatusBead.Visibility = Visibility.Visible;
+        ResetChibiPose();
+        var area = SystemParameters.WorkArea;
+        left = Math.Clamp(left, area.Left, Math.Max(area.Left, area.Right - CompactWidth));
+        top = Math.Clamp(top, area.Top, Math.Max(area.Top, area.Bottom - CompactHeight));
+        if (animate) AnimateWindowTo(left, top, CompactWidth, CompactHeight, TimeSpan.FromMilliseconds(180));
+        else SetWindowBounds(left, top, CompactWidth, CompactHeight);
+    }
+
+    private static Rect AnchoredBounds(double width, double height, PetDockEdge edge, double offset)
+    {
+        var area = SystemParameters.WorkArea;
+        var left = edge is PetDockEdge.Left or PetDockEdge.Right
+            ? (edge == PetDockEdge.Left ? area.Left : area.Right - width)
+            : Math.Clamp(area.Left + offset, area.Left, Math.Max(area.Left, area.Right - width));
+        var top = edge is PetDockEdge.Top or PetDockEdge.Bottom
+            ? (edge == PetDockEdge.Top ? area.Top : area.Bottom - height)
+            : Math.Clamp(area.Top + offset, area.Top, Math.Max(area.Top, area.Bottom - height));
+        return new Rect(left, top, width, height);
+    }
+
+    private void ResetChibiPose()
+    {
+        ChibiPoseScale.ScaleX = ChibiPoseScale.ScaleY = 1;
+        ChibiPoseRotate.Angle = 0;
+        ChibiDockTranslate.X = ChibiDockTranslate.Y = 0;
+    }
+
+    private void AnimateWindowTo(double left, double top, double width, double height, TimeSpan duration)
+    {
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        AnimateWindowProperty(LeftProperty, left, duration, easing);
+        AnimateWindowProperty(TopProperty, top, duration, easing);
+        AnimateWindowProperty(WidthProperty, width, duration, easing);
+        AnimateWindowProperty(HeightProperty, height, duration, easing);
+    }
+
+    private void AnimateWindowProperty(DependencyProperty property, double target, TimeSpan duration, IEasingFunction easing)
+    {
+        BeginAnimation(property, null);
+        var animation = new DoubleAnimation((double)GetValue(property), target, duration)
+        {
+            EasingFunction = easing,
+            FillBehavior = FillBehavior.Stop
+        };
+        animation.Completed += (_, _) =>
+        {
+            BeginAnimation(property, null);
+            SetValue(property, target);
+        };
+        BeginAnimation(property, animation, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private void ClearWindowMotion()
+    {
+        foreach (var property in new[] { LeftProperty, TopProperty, WidthProperty, HeightProperty })
+        {
+            var value = (double)GetValue(property);
+            BeginAnimation(property, null);
+            SetValue(property, value);
+        }
+    }
+
+    private void SetWindowBounds(double left, double top, double width, double height)
+    {
+        ClearWindowMotion();
+        Left = left; Top = top; Width = width; Height = height;
+    }
 
     private void SetExpanded(bool expanded)
     {
         if (isExpanded == expanded) return;
         isExpanded = expanded;
-        Width = expanded ? 350 : 155;
-        Height = expanded ? 460 : 205;
+        isPeeked = false;
+        ClearWindowMotion();
+        Width = expanded ? ExpandedWidth : CompactWidth;
+        Height = expanded ? ExpandedHeight : CompactHeight;
+        ResetChibiPose();
+        DockGrip.Visibility = Visibility.Collapsed;
         AdultPetCharacter.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
         ChibiPetCharacter.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         StatusBead.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;

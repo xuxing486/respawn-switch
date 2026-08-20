@@ -2,7 +2,7 @@
 <Window x:Class="RespawnSwitch.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="RespawnSwitch · Stress Monster" Width="155" Height="205" MinWidth="145" MinHeight="190"
+        Title="RespawnSwitch · Stress Monster" Width="155" Height="205" MinWidth="92" MinHeight="96"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True" WindowStartupLocation="Manual"
         FontFamily="Segoe UI, Microsoft YaHei UI" MouseEnter="PetSurface_MouseEnter"
@@ -17,30 +17,35 @@
         </Storyboard></BeginStoryboard></EventTrigger>
     </Window.Triggers>
     <Grid x:Name="PetRoot" ClipToBounds="False">
-        <Grid x:Name="AdultPetCharacter" Visibility="Collapsed" Width="330" Height="440" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="PetScaleTransform" ScaleX="1" ScaleY="1" CenterX="165" CenterY="300"/><TranslateTransform x:Name="PetFloat"/></TransformGroup></Grid.RenderTransform>
-            <Ellipse Width="235" Height="45" VerticalAlignment="Bottom" Margin="0,0,0,7" Opacity="0.34" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#A04C465E" Offset="0"/><GradientStop Color="#004C465E" Offset="1"/></RadialGradientBrush></Ellipse.Fill><Ellipse.Effect><BlurEffect Radius="13"/></Ellipse.Effect></Ellipse>
+        <Grid x:Name="AdultPetCharacter" Visibility="Collapsed" Width="195" Height="380" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="PetScaleTransform" ScaleX="1" ScaleY="1" CenterX="98" CenterY="260"/><TranslateTransform x:Name="PetFloat"/></TransformGroup></Grid.RenderTransform>
+            <Ellipse Width="170" Height="38" VerticalAlignment="Bottom" Margin="0,0,0,5" Opacity="0.34" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#A04C465E" Offset="0"/><GradientStop Color="#004C465E" Offset="1"/></RadialGradientBrush></Ellipse.Fill><Ellipse.Effect><BlurEffect Radius="13"/></Ellipse.Effect></Ellipse>
             <Image x:Name="CatgirlMascotImage" Source="Assets/stress-monster-pet-idle.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="5,0"/>
             <!-- Local-only pet touch areas; there is no global mouse hook. -->
-            <Border x:Name="HeadTouchZone" Width="138" Height="105" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-12,22,0,0" Background="#01000000" CornerRadius="55" MouseLeftButtonUp="HeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
-            <Border x:Name="HandTouchZone" Width="82" Height="92" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="21,93,0,0" Background="#01000000" CornerRadius="35" MouseLeftButtonUp="HandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
-            <Border x:Name="TailTouchZone" Width="97" Height="185" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,25,0,0" Background="#01000000" CornerRadius="46" MouseLeftButtonUp="TailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+            <Border x:Name="HeadTouchZone" Width="88" Height="76" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-5,37,0,0" Background="#01000000" CornerRadius="42" MouseLeftButtonUp="AdultHeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
+            <Border x:Name="HandTouchZone" Width="52" Height="68" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,101,0,0" Background="#01000000" CornerRadius="28" MouseLeftButtonUp="AdultHandTouchZone_MouseLeftButtonUp" ToolTip="牵手"/>
+            <Border x:Name="TailTouchZone" Width="59" Height="143" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,38,0,0" Background="#01000000" CornerRadius="34" MouseLeftButtonUp="AdultTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
         </Grid>
         <Grid x:Name="ChibiPetCharacter" Width="150" Height="190" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="ChibiScaleTransform" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><TranslateTransform Y="-2"/></TransformGroup></Grid.RenderTransform>
+            <Grid.RenderTransform><TransformGroup><ScaleTransform x:Name="ChibiScaleTransform" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><ScaleTransform x:Name="ChibiPoseScale" ScaleX="1" ScaleY="1" CenterX="75" CenterY="105"/><RotateTransform x:Name="ChibiPoseRotate" CenterX="75" CenterY="105"/><TranslateTransform Y="-2"/><TranslateTransform x:Name="ChibiDockTranslate"/></TransformGroup></Grid.RenderTransform>
             <Image x:Name="ChibiMascotImage" Source="Assets/stress-monster-pet-chibi.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
-            <Border x:Name="ChibiHeadTouchZone" Width="94" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-7,5,0,0" Background="#01000000" CornerRadius="42" MouseLeftButtonUp="HeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
-            <Border x:Name="ChibiHandTouchZone" Width="48" Height="55" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,-5,0,0" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="HandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
-            <Border x:Name="ChibiTailTouchZone" Width="52" Height="90" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,22,0,0" Background="#01000000" CornerRadius="26" MouseLeftButtonUp="TailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+            <Border x:Name="ChibiHeadTouchZone" Width="94" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="-7,5,0,0" Background="#01000000" CornerRadius="42" MouseLeftButtonUp="ChibiHeadTouchZone_MouseLeftButtonUp" ToolTip="摸摸头"/>
+            <Border x:Name="ChibiHandTouchZone" Width="48" Height="55" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,-5,0,0" Background="#01000000" CornerRadius="24" MouseLeftButtonUp="ChibiHandTouchZone_MouseLeftButtonUp" ToolTip="击个掌"/>
+            <Border x:Name="ChibiTailTouchZone" Width="52" Height="90" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,22,0,0" Background="#01000000" CornerRadius="26" MouseLeftButtonUp="ChibiTailTouchZone_MouseLeftButtonUp" ToolTip="碰尾巴"/>
+        </Grid>
+        <Grid x:Name="DockGrip" Visibility="Collapsed" Width="94" Height="18" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,3" IsHitTestVisible="False">
+            <Border Height="7" VerticalAlignment="Bottom" Background="#D94F465F" BorderBrush="#D8F3A0B9" BorderThickness="1" CornerRadius="4"/>
+            <Ellipse Width="18" Height="12" Fill="#FFF4E6EC" HorizontalAlignment="Left" Margin="15,0,0,3"/>
+            <Ellipse Width="18" Height="12" Fill="#FFF4E6EC" HorizontalAlignment="Right" Margin="0,0,15,3"/>
         </Grid>
         <Border x:Name="ReactionBubble" Visibility="Collapsed" Width="145" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,2,0,0" Background="#F2242135" BorderBrush="#705F7185" BorderThickness="1" CornerRadius="14" Padding="9,7">
             <TextBlock x:Name="ReactionText" Text="今天也要顺利开黑喵。" Foreground="#FFF8FC" FontSize="12" TextWrapping="Wrap"/>
         </Border>
-        <Border x:Name="PetPanel" Visibility="Collapsed" Width="338" HorizontalAlignment="Center" VerticalAlignment="Top" Background="#F0181727" BorderBrush="#665A4F70" BorderThickness="1" CornerRadius="23" Padding="16" Margin="6,4,6,0">
+        <Border x:Name="PetPanel" Visibility="Collapsed" Width="215" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#F0181727" BorderBrush="#665A4F70" BorderThickness="1" CornerRadius="23" Padding="12" Margin="0,4,4,4">
             <Border.Effect><DropShadowEffect Color="#B0000000" BlurRadius="20" ShadowDepth="4" Opacity="0.58"/></Border.Effect>
             <StackPanel>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <StackPanel><TextBlock Text="RespawnSwitch" FontWeight="Bold" FontSize="18" Foreground="#FFF8FC"/><TextBlock x:Name="FriendlyTitleText" Text="阵亡看抖音，复活回游戏" Foreground="#B9B4C8" FontSize="11" Margin="0,2,0,0"/></StackPanel>
+                    <StackPanel><TextBlock Text="RespawnSwitch" FontWeight="Bold" FontSize="16" Foreground="#FFF8FC"/><TextBlock x:Name="FriendlyTitleText" Text="阵亡看抖音，复活回游戏" Foreground="#B9B4C8" FontSize="10" Margin="0,2,0,0"/></StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="PinButton" Content="置顶" Style="{StaticResource PetAction}" Click="Pin_Click"/><Button Content="×" Width="30" Padding="0" Margin="6,0,0,0" Click="ClosePanel_Click"/></StackPanel>
                 </Grid>
                 <Border x:Name="OverallStatusPill" Background="#2C2830" CornerRadius="15" Padding="11,8" Margin="0,12,0,8"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions><Ellipse x:Name="OverallStatusLight" Width="9" Height="9" Fill="#FDB022" Margin="0,0,8,0"/><TextBlock x:Name="OverallStatusText" Grid.Column="1" Text="正在检查" FontWeight="SemiBold" FontSize="12"/></Grid></Border>
@@ -49,11 +54,8 @@
                     <Border Grid.Column="1" Background="#B8232033" CornerRadius="13" Padding="10" Margin="4,0,0,0"><StackPanel><TextBlock x:Name="DouyinStatusTitleText" Text="抖音" FontWeight="SemiBold"/><TextBlock x:Name="DouyinStateText" Text="请打开一个视频" Foreground="#AAA8BC" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/><TextBlock x:Name="MediaStateText" Text="等待视频" Foreground="{StaticResource PetMint}" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
                 </Grid>
                 <Border x:Name="IssuePanel" Background="#2A222D" BorderBrush="#55323B" BorderThickness="1" CornerRadius="12" Padding="10" Margin="0,0,0,8"><TextBlock x:Name="IssueText" Text="正在检查游戏与抖音。" Foreground="#E6DFE9" FontSize="11" TextWrapping="Wrap"/></Border>
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <ComboBox x:Name="DouyinTargetCombo" Width="145" SelectionChanged="DouyinTarget_Changed"><ComboBoxItem Content="自动选择" Tag="Auto"/><ComboBoxItem Content="抖音客户端" Tag="Manual"/><ComboBoxItem Content="抖音网页" Tag="WebOnly"/></ComboBox>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="RetestButton" Content="重新检查" Style="{StaticResource PetAction}" Click="Retest_Click"/><Button x:Name="TestOverlayButton" Content="预览" Style="{StaticResource PetAction}" Margin="5,0,0,0" Click="TestOverlay_Click"/></StackPanel>
-                </Grid>
-                <Button Content="暂停助手" Style="{StaticResource PetAction}" HorizontalAlignment="Left" Margin="0,7,0,0" Click="Stop_Click"/>
+                <ComboBox x:Name="DouyinTargetCombo" HorizontalAlignment="Stretch" SelectionChanged="DouyinTarget_Changed"><ComboBoxItem Content="自动选择" Tag="Auto"/><ComboBoxItem Content="抖音客户端" Tag="Manual"/><ComboBoxItem Content="抖音网页" Tag="WebOnly"/></ComboBox>
+                <UniformGrid Columns="3" Margin="0,7,0,0"><Button x:Name="RetestButton" Content="重试" Style="{StaticResource PetAction}" Click="Retest_Click"/><Button x:Name="TestOverlayButton" Content="预览" Style="{StaticResource PetAction}" Margin="4,0" Click="TestOverlay_Click"/><Button Content="暂停" Style="{StaticResource PetAction}" Click="Stop_Click"/></UniformGrid>
             </StackPanel>
         </Border>
         <Button x:Name="StatusBead" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,10" Padding="12,7" Background="#E6201D2D" BorderBrush="#766A607F" Click="ShowPetPanel_Click"><StackPanel Orientation="Horizontal"><Ellipse Width="8" Height="8" Fill="{StaticResource PetMint}" Margin="0,0,7,0"/><TextBlock x:Name="PetStatusText" Text="点我看看状态" FontSize="11"/></StackPanel></Button>

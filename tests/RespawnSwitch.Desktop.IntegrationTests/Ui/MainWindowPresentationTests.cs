@@ -54,17 +54,24 @@ public sealed class MainWindowPresentationTests
                 Assert.Equal(Visibility.Collapsed, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
                 window.ShowPetPanel();
                 Assert.Equal(Visibility.Visible, petPanel.Visibility);
-                Assert.Equal(350, window.Width);
-                Assert.Equal(460, window.Height);
+                Assert.InRange(window.Width, 400, 420);
+                Assert.InRange(window.Height, 360, 400);
                 Assert.Equal(Visibility.Collapsed, Assert.IsType<Grid>(window.FindName("ChibiPetCharacter")).Visibility);
-                Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
+                var adult = Assert.IsType<Grid>(window.FindName("AdultPetCharacter"));
+                Assert.Equal(Visibility.Visible, adult.Visibility);
+                Assert.Equal(HorizontalAlignment.Left, adult.HorizontalAlignment);
+                Assert.Equal(HorizontalAlignment.Right, petPanel.HorizontalAlignment);
+                Assert.True(adult.Width + petPanel.Width <= window.Width);
                 foreach (var zone in new[] { "HeadTouchZone", "HandTouchZone", "TailTouchZone" })
                     Assert.IsType<Border>(window.FindName(zone));
                 var head = Assert.IsType<Border>(window.FindName("HeadTouchZone"));
                 head.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
                     { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
                 Assert.Equal(Visibility.Visible, Assert.IsType<Border>(window.FindName("ReactionBubble")).Visibility);
-                Assert.Contains("舒服", Text(window, "ReactionText"));
+                Assert.Contains("只有你", Text(window, "ReactionText"));
+                Assert.Equal(Visibility.Visible, Assert.IsType<Grid>(window.FindName("AdultPetCharacter")).Visibility);
+                Assert.Equal(Visibility.Collapsed, petPanel.Visibility);
+                Assert.IsType<Grid>(window.FindName("DockGrip"));
             }
             catch (Exception exception) { failure = exception; }
             finally
